@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../data/bundled_asset.dart';
 import '../data/models.dart';
 import '../data/place_repository.dart';
+import '../data/waypoint_store.dart';
 import '../location/location_service.dart';
 import '../location/position_fix.dart';
 import '../map/mbtiles_tile_provider.dart';
@@ -37,6 +38,13 @@ abstract class HomeDataSource {
     double? fromLongitude,
   });
 
+  /// Saved positions, newest first (FR-6.1).
+  Future<List<Waypoint>> waypoints();
+
+  Future<Waypoint> addWaypoint(Waypoint waypoint);
+
+  Future<bool> removeWaypoint(int id);
+
   Future<void> dispose();
 }
 
@@ -46,15 +54,19 @@ class BundledHomeDataSource implements HomeDataSource {
     BundledAssetStore? assets,
     Future<PlaceRepository> Function(String path)? openPlaces,
     Future<MbTilesTileProvider> Function(String path)? openBasemap,
+    Future<WaypointStore> Function()? openWaypoints,
   })  : _assets = assets ?? BundledAssetStore(),
         _openPlaces = openPlaces ?? PlaceRepository.openAt,
-        _openBasemap = openBasemap ?? MbTilesTileProvider.openAt;
+        _openBasemap = openBasemap ?? MbTilesTileProvider.openAt,
+        _openWaypoints = openWaypoints ?? WaypointStore.open;
 
   final BundledAssetStore _assets;
   final Future<PlaceRepository> Function(String path) _openPlaces;
   final Future<MbTilesTileProvider> Function(String path) _openBasemap;
+  final Future<WaypointStore> Function() _openWaypoints;
 
   PlaceRepository? _places;
+  WaypointStore? _waypoints;
 
   @override
   MbTilesTileProvider? tileProvider;
@@ -65,6 +77,7 @@ class BundledHomeDataSource implements HomeDataSource {
     final basemap = await _assets.ensure(BundledAssetStore.basemap);
     _places = await _openPlaces(places.path);
     tileProvider = await _openBasemap(basemap.path);
+    _waypoints = await _openWaypoints();
   }
 
   @override
@@ -87,8 +100,26 @@ class BundledHomeDataSource implements HomeDataSource {
   }
 
   @override
+  Future<List<Waypoint>> waypoints() async =>
+      await _waypoints?.all() ?? const [];
+
+  @override
+  Future<Waypoint> addWaypoint(Waypoint waypoint) async {
+    final store = _waypoints;
+    if (store == null) {
+      throw StateError('Saved places are not available on this device');
+    }
+    return store.add(waypoint);
+  }
+
+  @override
+  Future<bool> removeWaypoint(int id) async =>
+      await _waypoints?.remove(id) ?? false;
+
+  @override
   Future<void> dispose() async {
     await _places?.close();
+    await _waypoints?.close();
     await tileProvider?.dispose();
   }
 }
@@ -194,6 +225,40 @@ class HomeController extends ChangeNotifier {
   /// Re-runs the permission flow, for the user who granted it in system
   /// settings and came back.
   Future<void> retryLocation() => _location.start();
+
+  /// Saves the current position (FR-6.1).
+  ///
+  /// Captures the accuracy and the resolved place name as they stand right
+  /// now. Both are part of the record: a waypoint taken with a 200 metre fix
+  /// means something different from one taken with a 4 metre fix, and the
+  /// place name is what the user saw when they decided this spot mattered.
+  ///
+  /// Returns null when there is no fix to save.
+  Future<Waypoint?> saveCurrentPosition({String? label, String? note}) async {
+    final current = fix;
+    if (current == null) return null;
+
+    final saved = await _data.addWaypoint(Waypoint(
+      label: label,
+      note: note,
+      latitude: current.latitude,
+      longitude: current.longitude,
+      accuracyMeters: current.accuracyMeters,
+      altitudeMeters: current.altitudeMeters,
+      placeName: placeMatch?.place.displayName,
+      savedAt: DateTime.now().toUtc(),
+    ));
+    notifyListeners();
+    return saved;
+  }
+
+  Future<List<Waypoint>> waypoints() => _data.waypoints();
+
+  Future<bool> removeWaypoint(int id) async {
+    final removed = await _data.removeWaypoint(id);
+    if (removed) notifyListeners();
+    return removed;
+  }
 
   /// Searches place names, measuring from the current fix when there is one.
   Future<List<PlaceSearchResult>> search(String query) {

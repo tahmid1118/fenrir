@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../data/models.dart';
 import '../geo/coordinate_formats.dart';
 import '../location/position_fix.dart';
 import 'fix_indicator.dart';
@@ -10,6 +11,7 @@ import 'map_view.dart';
 import 'place_banner.dart';
 import 'position_panel.dart';
 import 'search_sheet.dart';
+import 'waypoint_sheet.dart';
 
 /// The single screen the app opens onto.
 ///
@@ -114,6 +116,74 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Saves the current position, then offers to name it (FR-6.1).
+  ///
+  /// Saved first, named second. The user pressed save because they are
+  /// somewhere worth recording, and making the record depend on them finishing
+  /// a dialogue risks losing the position to a dropped phone or a closed app.
+  Future<void> _saveCurrentPosition() async {
+    final Waypoint? saved;
+    try {
+      saved = await _controller.saveCurrentPosition();
+    } on Object catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save: $e')),
+      );
+      return;
+    }
+    if (saved == null || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Saved ${saved.displayLabel}'),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => unawaited(_controller.removeWaypoint(saved!.id!)),
+        ),
+      ),
+    );
+  }
+
+  /// Shows saved positions (FR-6.1).
+  Future<void> _openWaypoints() async {
+    final waypoints = await _controller.waypoints();
+    if (!mounted) return;
+
+    final chosen = await showModalBottomSheet<Waypoint>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.6,
+        child: StatefulBuilder(
+          builder: (context, setSheetState) => WaypointSheet(
+            waypoints: waypoints,
+            fromLatitude: _controller.fix?.latitude,
+            fromLongitude: _controller.fix?.longitude,
+            onDelete: (w) async {
+              await _controller.removeWaypoint(w.id!);
+              setSheetState(() => waypoints.remove(w));
+            },
+            onSelected: (w) => Navigator.of(context).pop(w),
+          ),
+        ),
+      ),
+    );
+
+    if (chosen != null && mounted) {
+      setState(() {
+        _searchTarget = (
+          latitude: chosen.latitude,
+          longitude: chosen.longitude,
+          label: chosen.displayLabel,
+          detail: 'Saved place',
+        );
+      });
+    }
+  }
+
   /// Something the user searched for, shown on the map until dismissed.
   ///
   /// Either a place from the database or a coordinate they pasted; the map
@@ -173,6 +243,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const Spacer(),
+                      _SavedButton(onPressed: _openWaypoints),
+                      const SizedBox(width: 8),
                       _SearchButton(onPressed: _openSearch),
                       if (fix != null && !_controller.followPosition) ...[
                         const SizedBox(width: 8),
@@ -267,6 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
               format: _format,
               match: _controller.placeMatch,
               onFormatChanged: (f) => setState(() => _format = f),
+              onSave: _saveCurrentPosition,
             ),
           ],
         );
@@ -467,6 +540,25 @@ class _TargetChip extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SavedButton extends StatelessWidget {
+  const _SavedButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Saved places',
+      child: IconButton.filledTonal(
+        onPressed: onPressed,
+        icon: const Icon(Icons.bookmarks_outlined, size: 20),
+        tooltip: 'Saved places',
       ),
     );
   }

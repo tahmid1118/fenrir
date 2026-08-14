@@ -4,7 +4,12 @@
       "Bash(sed -i \"s|^import 'package:sqflite/sqflite.dart';|import 'database.dart';|\" lib/src/data/place_repository.dart)",
       "Bash(sed -i \"s|\\(factory ?? databaseFactory\\)|\\(factory ?? appDatabaseFactory\\)|\" lib/src/data/place_repository.dart)",
       "Bash(sed -i \"s|^import 'package:sqflite/sqflite.dart';|import '../data/database.dart';|\" lib/src/map/mbtiles_tile_provider.dart)",
-      "Bash(sed -i \"s|\\(factory ?? databaseFactory\\)|\\(factory ?? appDatabaseFactory\\)|\" lib/src/map/mbtiles_tile_provider.dart)"
+      "Bash(sed -i \"s|\\(factory ?? databaseFactory\\)|\\(factory ?? appDatabaseFactory\\)|\" lib/src/map/mbtiles_tile_provider.dart)",
+      "Bash(sed -i \"s|^import '../data/place_repository.dart';|import '../data/place_repository.dart';\\\\nimport '../data/waypoint_store.dart';|\" lib/src/ui/home_controller.dart)",
+      "Bash(sed -i \"s|^    tileProvider = await _openBasemap\\(basemap.path\\);|    tileProvider = await _openBasemap\\(basemap.path\\);\\\\n    _waypoints = await _openWaypoints\\(\\);|\" lib/src/ui/home_controller.dart)",
+      "Bash(sed -i \"s|^import '../geo/coordinate_formats.dart';|import '../data/models.dart';\\\\nimport '../geo/coordinate_formats.dart';|\" lib/src/ui/home_screen.dart)",
+      "Bash(sed -i \"s|^import 'search_sheet.dart';|import 'search_sheet.dart';\\\\nimport 'waypoint_sheet.dart';|\" lib/src/ui/home_screen.dart)",
+      "Bash(sed -i \"s|                      _SearchButton\\(onPressed: _openSearch\\),|                      _SavedButton\\(onPressed: _openWaypoints\\),\\\\n                      const SizedBox\\(width: 8\\),\\\\n                      _SearchButton\\(onPressed: _openSearch\\),|\" lib/src/ui/home_screen.dart)"
     ]
   }
 }

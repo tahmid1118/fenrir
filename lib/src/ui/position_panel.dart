@@ -16,12 +16,16 @@ class PositionPanel extends StatelessWidget {
     required this.format,
     required this.match,
     required this.onFormatChanged,
+    this.onSave,
   });
 
   final PositionFix fix;
   final CoordinateFormat format;
   final PlaceMatch? match;
   final ValueChanged<CoordinateFormat> onFormatChanged;
+
+  /// Saves this position (FR-6.1). Null hides the action.
+  final VoidCallback? onSave;
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +106,12 @@ class PositionPanel extends StatelessWidget {
               icon: const Icon(Icons.ios_share, size: 18),
               label: const Text('Share'),
             ),
+            if (onSave != null)
+              TextButton.icon(
+                onPressed: onSave,
+                icon: const Icon(Icons.bookmark_add_outlined, size: 18),
+                label: const Text('Save'),
+              ),
           ],
         ),
       ],

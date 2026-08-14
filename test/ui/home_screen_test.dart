@@ -88,6 +88,34 @@ class FakeData implements HomeDataSource {
     return searchResults;
   }
 
+  /// Saved positions, held in memory.
+  final List<Waypoint> saved = [];
+
+  /// When set, [addWaypoint] throws it.
+  Object? saveFailure;
+
+  var _nextId = 1;
+
+  @override
+  Future<List<Waypoint>> waypoints() async =>
+      saved.reversed.toList(growable: false);
+
+  @override
+  Future<Waypoint> addWaypoint(Waypoint waypoint) async {
+    final failure = saveFailure;
+    if (failure != null) throw failure;
+    final stored = waypoint.copyWith(id: _nextId++);
+    saved.add(stored);
+    return stored;
+  }
+
+  @override
+  Future<bool> removeWaypoint(int id) async {
+    final before = saved.length;
+    saved.removeWhere((w) => w.id == id);
+    return saved.length != before;
+  }
+
   @override
   Future<void> dispose() async {}
 }
@@ -350,6 +378,128 @@ void main() {
 
       expect(find.textContaining('Not defined above'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('FR-6.1 saving a position', () {
+    testWidgets('captures the fix, its accuracy and the resolved place',
+        (tester) async {
+      final source = FakeSource();
+      final data = FakeData(match: dhanmondi);
+      await pumpHome(tester, source, data: data);
+
+      source.controller.add(PositionFix(
+        latitude: 23.7461,
+        longitude: 90.3742,
+        accuracyMeters: 6,
+        timestamp: DateTime.now(),
+        altitudeMeters: 27.4,
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.widgetWithText(TextButton, 'Save'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(data.saved, hasLength(1));
+      final saved = data.saved.single;
+      expect(saved.latitude, 23.7461);
+      expect(saved.longitude, 90.3742);
+      // A waypoint taken with a coarse fix means something different from one
+      // taken with a sharp fix, so the accuracy is part of the record.
+      expect(saved.accuracyMeters, 6);
+      expect(saved.altitudeMeters, 27.4);
+      // What the user saw when they decided the spot mattered.
+      expect(saved.placeName, 'Dhanmondi, Dhaka, Dhaka Division, BD');
+      expect(saved.savedAt.isUtc, isTrue);
+    });
+
+    testWidgets('confirms the save and offers to undo it', (tester) async {
+      final source = FakeSource();
+      final data = FakeData(match: dhanmondi);
+      await pumpHome(tester, source, data: data);
+
+      source.controller.add(PositionFix(
+        latitude: 23.7461,
+        longitude: 90.3742,
+        accuracyMeters: 6,
+        timestamp: DateTime.now(),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.widgetWithText(TextButton, 'Save'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.textContaining('Saved Dhanmondi'), findsOneWidget);
+
+      // Saving is one tap, so undoing it must be too.
+      await tester.tap(find.text('Undo'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(data.saved, isEmpty);
+    });
+
+    testWidgets('a save that fails says so rather than silently doing nothing',
+        (tester) async {
+      final source = FakeSource();
+      final data = FakeData(match: dhanmondi)
+        ..saveFailure = StateError('disk full');
+      await pumpHome(tester, source, data: data);
+
+      source.controller.add(PositionFix(
+        latitude: 23.7461,
+        longitude: 90.3742,
+        accuracyMeters: 6,
+        timestamp: DateTime.now(),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.widgetWithText(TextButton, 'Save'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.textContaining('Could not save'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('open water saves with coordinates as the name',
+        (tester) async {
+      // FR-3.3's no-place-nearby case still has to be savable.
+      final source = FakeSource();
+      final data = FakeData(match: null);
+      await pumpHome(tester, source, data: data);
+
+      source.controller.add(PositionFix(
+        latitude: 30.0,
+        longitude: -40.0,
+        accuracyMeters: 8,
+        timestamp: DateTime.now(),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.widgetWithText(TextButton, 'Save'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(data.saved, hasLength(1));
+      expect(data.saved.single.placeName, isNull);
+      expect(data.saved.single.displayLabel, '30.00000, -40.00000');
+    });
+
+    testWidgets('there is nothing to save without a fix', (tester) async {
+      final source = FakeSource();
+      final data = FakeData(match: dhanmondi);
+      await pumpHome(tester, source, data: data);
+
+      // Still searching: the panel, and so the save action, is not on screen.
+      expect(find.widgetWithText(TextButton, 'Save'), findsNothing);
+      expect(data.saved, isEmpty);
     });
   });
 

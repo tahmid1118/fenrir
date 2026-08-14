@@ -22,6 +22,9 @@ Suite: **175 tests passing**, `flutter analyze` clean.
 | FR-3.2 | Report distance honestly | ✅ | *near* vs *in* asserted, including a Sundarbans position in the real coverage gap. |
 | FR-3.3 | Nothing over open water | ✅ | `30.0, -40.0` → null, plus four more ocean probes. |
 | FR-4.1 | Map with position, offline, first launch | ✅ | Confirmed by eye on a phone in airplane mode, on a first run with nothing cached: the bundled basemap rendered with the position marker on it. This is the product's differentiating claim and it now has a screenshot behind it. |
+| FR-6.1 | Save the current position as a waypoint | ✅ | Local SQLite, separate from the bundled databases. Confirmed on device: saved, listed, undoable. |
+| FR-8.1 | Offline place search | ✅ | 235,242 names via FTS5, with distance and bearing. On device: *Chattogram → 214 km SE*. |
+| FR-8.2 | Coordinate and Plus Code entry | ✅ | Five notations parsed; round-trip property asserts anything rendered can be pasted back. |
 | FR-9.1 | Zero-configuration first run | ✅ | One screen, no route stack, no wizard, no account. Asserted in `home_screen_test`. |
 | FR-9.2 | No accounts, tracking or advertising | ✅ | See the dependency audit below. |
 

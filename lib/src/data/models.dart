@@ -139,6 +139,110 @@ class PlaceMatch {
       '${distanceKm.toStringAsFixed(2)} km, ${proximity.name})';
 }
 
+/// A position the user chose to keep (FR-6.1).
+///
+/// Everything the requirement asks for is captured at the moment of saving:
+/// the position, when it was taken, how accurate it was, the resolved place
+/// name, and an optional note.
+///
+/// The place name is stored rather than re-resolved on display. It is what the
+/// user saw when they decided this spot was worth keeping, and a later database
+/// rebuild could otherwise silently rename their waypoint.
+@immutable
+class Waypoint {
+  const Waypoint({
+    this.id,
+    this.label,
+    this.note,
+    required this.latitude,
+    required this.longitude,
+    required this.accuracyMeters,
+    this.altitudeMeters,
+    this.placeName,
+    required this.savedAt,
+  });
+
+  /// Null until the row has been written.
+  final int? id;
+
+  /// What the user called it. Null means it is shown by place or coordinates.
+  final String? label;
+
+  final String? note;
+
+  final double latitude;
+  final double longitude;
+
+  /// The accuracy radius at the moment of saving.
+  ///
+  /// Kept because a waypoint recorded with a 200 metre fix is a different
+  /// thing from one recorded with a 4 metre fix, and FR-1.2's honesty applies
+  /// just as much afterwards as it does live.
+  final double accuracyMeters;
+
+  final double? altitudeMeters;
+
+  /// The resolved place name as it stood when this was saved.
+  final String? placeName;
+
+  final DateTime savedAt;
+
+  /// What to show as the primary name, in order of what the user will
+  /// recognise.
+  String get displayLabel {
+    final chosen = label?.trim();
+    if (chosen != null && chosen.isNotEmpty) return chosen;
+    final place = placeName?.trim();
+    if (place != null && place.isNotEmpty) return place;
+    return '${latitude.toStringAsFixed(5)}, '
+        '${longitude.toStringAsFixed(5)}';
+  }
+
+  Waypoint copyWith({int? id, String? label, String? note}) {
+    return Waypoint(
+      id: id ?? this.id,
+      label: label ?? this.label,
+      note: note ?? this.note,
+      latitude: latitude,
+      longitude: longitude,
+      accuracyMeters: accuracyMeters,
+      altitudeMeters: altitudeMeters,
+      placeName: placeName,
+      savedAt: savedAt,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Waypoint &&
+          id == other.id &&
+          label == other.label &&
+          note == other.note &&
+          latitude == other.latitude &&
+          longitude == other.longitude &&
+          accuracyMeters == other.accuracyMeters &&
+          altitudeMeters == other.altitudeMeters &&
+          placeName == other.placeName &&
+          savedAt == other.savedAt);
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        label,
+        note,
+        latitude,
+        longitude,
+        accuracyMeters,
+        altitudeMeters,
+        placeName,
+        savedAt,
+      );
+
+  @override
+  String toString() => 'Waypoint($id, $displayLabel)';
+}
+
 /// A search hit, with how far away it is from wherever the user is now.
 ///
 /// FR-8.1 asks for distance and bearing alongside each result. Both are null
