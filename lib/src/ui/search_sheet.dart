@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../data/models.dart';
+import '../geo/coordinate_formats.dart';
+import '../geo/coordinate_parser.dart';
 
 /// Offline place search (FR-8.1).
 ///
@@ -13,6 +15,7 @@ class SearchSheet extends StatefulWidget {
     super.key,
     required this.onSearch,
     required this.onSelected,
+    this.onCoordinate,
     this.debounce = const Duration(milliseconds: 180),
   });
 
@@ -20,6 +23,9 @@ class SearchSheet extends StatefulWidget {
   final Future<List<PlaceSearchResult>> Function(String query) onSearch;
 
   final ValueChanged<PlaceSearchResult> onSelected;
+
+  /// Called when the user picks a coordinate they typed or pasted (FR-8.2).
+  final ValueChanged<ParsedCoordinate>? onCoordinate;
 
   /// How long to wait after the last keystroke before querying.
   ///
@@ -39,6 +45,9 @@ class _SearchSheetState extends State<SearchSheet> {
   List<PlaceSearchResult> _results = const [];
   bool _searching = false;
   String _lastQuery = '';
+
+  /// Set when the typed text is itself a position (FR-8.2).
+  ParsedCoordinate? _coordinate;
 
   /// Guards against an earlier, slower query overwriting a later one.
   int _generation = 0;
@@ -81,7 +90,14 @@ class _SearchSheetState extends State<SearchSheet> {
       return;
     }
 
-    setState(() => _searching = true);
+    // FR-8.2: the text may be a position rather than a name. Parsing is
+    // instant and local, so it happens before the query rather than after it.
+    final coordinate = parseCoordinate(trimmed);
+
+    setState(() {
+      _searching = true;
+      _coordinate = coordinate;
+    });
     final results = await widget.onSearch(trimmed);
 
     // A slower earlier query must not clobber a later one's results.
@@ -145,20 +161,32 @@ class _SearchSheetState extends State<SearchSheet> {
         'Works with no signal. Nothing is sent anywhere.',
       );
     }
-    if (_results.isEmpty && !_searching && _lastQuery.isNotEmpty) {
+    final coordinate = _coordinate;
+
+    if (_results.isEmpty && coordinate == null && !_searching &&
+        _lastQuery.isNotEmpty) {
       return _hint(
         theme,
         Icons.search_off,
         'No match for "$_lastQuery"',
-        'Only populated places are in the offline database.',
+        'Only populated places are in the offline database. '
+            'Coordinates and Plus Codes also work here.',
       );
     }
 
+    // A recognised coordinate leads, because someone who pasted one is not
+    // looking for a name that happens to contain the same digits.
+    final leading = coordinate == null ? 0 : 1;
+
     return ListView.builder(
       shrinkWrap: true,
-      itemCount: _results.length,
-      itemBuilder: (context, i) {
-        final result = _results[i];
+      itemCount: _results.length + leading,
+      itemBuilder: (context, index) {
+        if (coordinate != null && index == 0) {
+          return _coordinateTile(theme, coordinate);
+        }
+
+        final result = _results[index - leading];
         final distance = result.distanceKm;
 
         return ListTile(
@@ -185,6 +213,27 @@ class _SearchSheetState extends State<SearchSheet> {
           onTap: () => widget.onSelected(result),
         );
       },
+    );
+  }
+
+  /// Offers a position the user typed or pasted (FR-8.2).
+  ///
+  /// States which notation was recognised. Several of them look alike at a
+  /// glance, and confirming the reading is what stops a misread going
+  /// unnoticed.
+  Widget _coordinateTile(ThemeData theme, ParsedCoordinate coordinate) {
+    return ListTile(
+      dense: true,
+      leading: Icon(Icons.my_location, size: 20,
+          color: theme.colorScheme.tertiary),
+      title: Text(
+        formatDecimalDegrees(coordinate.latitude, coordinate.longitude),
+        style: const TextStyle(fontFamily: 'monospace'),
+      ),
+      subtitle: Text('Read as ${coordinate.format.label}'),
+      onTap: widget.onCoordinate == null
+          ? null
+          : () => widget.onCoordinate!(coordinate),
     );
   }
 

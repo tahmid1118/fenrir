@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fenrir/src/data/models.dart';
+import 'package:fenrir/src/geo/coordinate_parser.dart';
 import 'package:fenrir/src/ui/search_sheet.dart';
 import 'package:fenrir/src/ui/theme.dart';
 
@@ -198,6 +199,82 @@ void main() {
       expect(find.text('Somewhere'), findsOneWidget);
       final tile = tester.widget<ListTile>(find.byType(ListTile));
       expect(tile.trailing, isNull);
+    });
+  });
+
+  group('FR-8.2 coordinate entry', () {
+    testWidgets('a pasted coordinate is offered ahead of name matches',
+        (tester) async {
+      // Someone who pasted a coordinate is not looking for a place name that
+      // happens to contain the same digits.
+      ParsedCoordinate? picked;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildFenrirTheme(),
+          home: Scaffold(
+            body: SearchSheet(
+              onSearch: (_) async => [result('Some Place')],
+              onSelected: (_) {},
+              onCoordinate: (c) => picked = c,
+              debounce: Duration.zero,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextField), '23.7461, 90.3742');
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('23.746100°, 90.374200°'), findsOneWidget);
+      // States which notation was recognised, because several look alike and
+      // confirming the reading is what stops a misread going unnoticed.
+      expect(find.text('Read as Decimal degrees'), findsOneWidget);
+
+      await tester.tap(find.text('23.746100°, 90.374200°'));
+      await tester.pump();
+
+      expect(picked, isNotNull);
+      expect(picked!.latitude, closeTo(23.7461, 1e-9));
+    });
+
+    testWidgets('a Plus Code is recognised and named', (tester) async {
+      await pump(tester, onSearch: (_) async => const []);
+
+      await tester.enterText(find.byType(TextField), '7FG49QCJ+2VX');
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Read as Plus Code'), findsOneWidget);
+      // Not treated as a failed name search.
+      expect(find.textContaining('No match'), findsNothing);
+    });
+
+    testWidgets('ordinary text is not mistaken for a coordinate',
+        (tester) async {
+      await pump(tester, onSearch: (_) async => [result('Dhaka')]);
+
+      await tester.enterText(find.byType(TextField), 'Dhaka');
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('Read as'), findsNothing);
+      // Scoped to the result tile: the query text is also on screen, inside
+      // the field the user just typed into.
+      expect(find.widgetWithText(ListTile, 'Dhaka'), findsOneWidget);
+    });
+
+    testWidgets('a no-match message mentions coordinates as an option',
+        (tester) async {
+      await pump(tester, onSearch: (_) async => const []);
+
+      await tester.enterText(find.byType(TextField), 'zzzq');
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('Coordinates and Plus Codes also work'),
+          findsOneWidget);
     });
   });
 

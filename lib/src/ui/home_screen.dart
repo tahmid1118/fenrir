@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../data/models.dart';
 import '../geo/coordinate_formats.dart';
 import '../location/position_fix.dart';
 import 'fix_indicator.dart';
@@ -77,7 +76,8 @@ class _HomeScreenState extends State<HomeScreen> {
   /// being gated, and a modal the user can dismiss with a swipe keeps the map
   /// one gesture away.
   Future<void> _openSearch() async {
-    final selected = await showModalBottomSheet<PlaceSearchResult>(
+    final selected = await showModalBottomSheet<
+        ({double latitude, double longitude, String label, String? detail})>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -89,7 +89,21 @@ class _HomeScreenState extends State<HomeScreen> {
           height: MediaQuery.of(context).size.height * 0.72,
           child: SearchSheet(
             onSearch: _controller.search,
-            onSelected: (result) => Navigator.of(context).pop(result),
+            onSelected: (result) => Navigator.of(context).pop((
+              latitude: result.place.latitude,
+              longitude: result.place.longitude,
+              label: result.place.name,
+              detail: result.place.displayName,
+            )),
+            onCoordinate: (coordinate) => Navigator.of(context).pop((
+              latitude: coordinate.latitude,
+              longitude: coordinate.longitude,
+              label: formatDecimalDegreesPlain(
+                coordinate.latitude,
+                coordinate.longitude,
+              ),
+              detail: coordinate.format.label,
+            )),
           ),
         ),
       ),
@@ -100,8 +114,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// A place chosen from search, shown on the map until dismissed.
-  PlaceSearchResult? _searchTarget;
+  /// Something the user searched for, shown on the map until dismissed.
+  ///
+  /// Either a place from the database or a coordinate they pasted; the map
+  /// treats both the same way.
+  ({
+    double latitude,
+    double longitude,
+    String label,
+    String? detail,
+  })? _searchTarget;
 
   @override
   void dispose() {
@@ -129,9 +151,9 @@ class _HomeScreenState extends State<HomeScreen> {
               target: _searchTarget == null
                   ? null
                   : (
-                      latitude: _searchTarget!.place.latitude,
-                      longitude: _searchTarget!.place.longitude,
-                      label: _searchTarget!.place.displayName,
+                      latitude: _searchTarget!.latitude,
+                      longitude: _searchTarget!.longitude,
+                      label: _searchTarget!.label,
                     ),
             ),
           ),
@@ -162,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 10),
                       child: _TargetChip(
-                        result: _searchTarget!,
+                        target: _searchTarget!,
                         onDismiss: () => setState(() => _searchTarget = null),
                       ),
                     ),
@@ -387,15 +409,15 @@ class _AssetNotice extends StatelessWidget {
 /// A pin on the map with nothing explaining it is the kind of unexplained
 /// state NFR-6 rules out.
 class _TargetChip extends StatelessWidget {
-  const _TargetChip({required this.result, required this.onDismiss});
+  const _TargetChip({required this.target, required this.onDismiss});
 
-  final PlaceSearchResult result;
+  final ({double latitude, double longitude, String label, String? detail})
+      target;
   final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final distance = result.distanceKm;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -419,19 +441,20 @@ class _TargetChip extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    result.place.name,
+                    target.label,
                     style: theme.textTheme.labelMedium
                         ?.copyWith(fontWeight: FontWeight.w600),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (distance != null)
+                  if (target.detail != null)
                     Text(
-                      '${distance < 1 ? '${(distance * 1000).round()} m' : '${distance.round()} km'} '
-                      '${result.compassPoint}',
+                      target.detail!,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                 ],
               ),
