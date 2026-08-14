@@ -52,6 +52,11 @@ dependencies:
   # Path joining for the bundled-asset extraction in lib/src/data.
   path: ^1.9.0
 
+  # Annotations only. Declared explicitly so lib/src/geo stays pure Dart and
+  # its tests need no Flutter binding, rather than reaching into
+  # package:flutter/foundation.dart for @immutable.
+  meta: ^1.16.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
