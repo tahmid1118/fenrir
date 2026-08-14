@@ -98,6 +98,7 @@ flutter:
   # download and no network. See requirements FR-3.1 / FR-4.1.
   assets:
     - assets/db/places.db
+    - assets/map/basemap.mbtiles
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
