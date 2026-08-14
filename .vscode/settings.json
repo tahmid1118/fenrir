@@ -1,0 +1,62 @@
+{
+  // ---- Dart / Flutter ----
+  "dart.previewFlutterUiGuides": true,
+  "dart.previewFlutterUiGuidesCustomTracking": true,
+  "dart.openDevTools": "flutter",
+  "dart.debugExternalPackageLibraries": false,
+  "dart.debugSdkLibraries": false,
+  "dart.lineLength": 80,
+
+  // Flutter is on PATH (C:\Users\tahmi\dev\flutter\bin), so the SDK is found
+  // automatically. If VS Code ever fails to locate it, set it explicitly here:
+  // "dart.flutterSdkPath": "C:\\Users\\tahmi\\dev\\flutter",
+
+  "[dart]": {
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.defaultFormatter": "Dart-Code.dart-code",
+    "editor.rulers": [80],
+    "editor.selectionHighlight": false,
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off"
+  },
+
+  // Prettier is installed globally on this machine; keep it away from Dart.
+  "[yaml]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+
+  // ---- Keep the editor fast ----
+  // build/ and .dart_tool/ churn constantly, and assets/db/places.db is 25.8 MB.
+  // Excluding them from the file watcher and search avoids needless CPU and
+  // stops binary noise appearing in results.
+  "files.exclude": {
+    "**/.dart_tool": true,
+    "**/.flutter-plugins-dependencies": true,
+    "**/build": true,
+    "**/*.iml": true,
+    "**/.idea": true
+  },
+  "search.exclude": {
+    "**/build": true,
+    "**/.dart_tool": true,
+    "**/assets/db": true,
+    "**/pubspec.lock": true
+  },
+  "files.watcherExclude": {
+    "**/build/**": true,
+    "**/.dart_tool/**": true,
+    "**/android/.gradle/**": true
+  },
+
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  // ---- Terminal ----
+  // Gradle needs JAVA_HOME; Android tooling needs ANDROID_HOME. Setting them
+  // per-workspace means the integrated terminal works even if the shell profile
+  // has not picked up the user environment variables yet.
+  "terminal.integrated.env.windows": {
+    "JAVA_HOME": "C:\\Program Files\\Android\\Android Studio\\jbr",
+    "ANDROID_HOME": "C:\\Users\\tahmi\\AppData\\Local\\Android\\Sdk"
+  }
+}

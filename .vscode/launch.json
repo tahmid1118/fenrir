@@ -1,0 +1,40 @@
+{
+  // Run these from the Run and Debug panel (Ctrl+Shift+D), or press F5 for the
+  // first one. Hot reload is Ctrl+F5 / the toolbar button once a session runs.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Fenrir (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Fenrir (web — Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "deviceId": "chrome",
+      // The Android emulator needs Windows Hypervisor Platform enabled, so
+      // Chrome is the working target until that is sorted. Note that sqflite
+      // does not run on web: the bundled places.db will not load here.
+      "args": ["--web-renderer", "canvaskit"]
+    },
+    {
+      "name": "Fenrir (profile — perf testing)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "Fenrir (release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "release"
+    }
+  ]
+}

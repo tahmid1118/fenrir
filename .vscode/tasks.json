@@ -1,0 +1,66 @@
+{
+  // Ctrl+Shift+P -> "Tasks: Run Task". "Analyze" is the default test task.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Flutter: pub get",
+      "type": "shell",
+      "command": "flutter pub get",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Flutter: analyze",
+      "type": "shell",
+      "command": "flutter analyze",
+      "problemMatcher": ["$dart-analyze"],
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "Flutter: test",
+      "type": "shell",
+      "command": "flutter test",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Flutter: build APK (debug)",
+      "type": "shell",
+      "command": "flutter build apk --debug",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Flutter: build AAB (release)",
+      "type": "shell",
+      "command": "flutter build appbundle --release",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Flutter: build web",
+      "type": "shell",
+      "command": "flutter build web",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Flutter: clean",
+      "type": "shell",
+      "command": "flutter clean",
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter: doctor",
+      "type": "shell",
+      "command": "flutter doctor -v",
+      "problemMatcher": []
+    },
+    {
+      "label": "Devices: list",
+      "type": "shell",
+      "command": "flutter devices",
+      "problemMatcher": []
+    }
+  ]
+}
