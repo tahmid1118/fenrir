@@ -13,7 +13,7 @@ Suite: **175 tests passing**, `flutter analyze` clean.
 
 | Req | What it asks | Status | Evidence |
 |---|---|---|---|
-| FR-1.1 | GPS fix without network, no silent fallback | Built, device-unverified | `AndroidSettings(forceLocationManager: true)` routes through the platform LocationManager rather than the fused provider. Cannot be proven without a device. |
+| FR-1.1 | GPS fix without network, no silent fallback | ✅ | `AndroidSettings(forceLocationManager: true)` routes through the platform LocationManager, not the fused provider. Confirmed on device in airplane mode: the app acquired and held a fix with every radio off, and the UI states plainly that it uses the receiver directly rather than nearby networks. |
 | FR-1.2 | Fix quality and accuracy radius | ✅ | `position_fix_test`: every quality boundary; radius always rendered; `home_screen_test` covers acquired / approximate / stale on screen. |
 | FR-2.1 | DD, DMS, UTM, MGRS, one-tap switching | ✅ | `coordinate_formats_test` (19); UTM/MGRS pinned to geobase's published Eiffel Tower values; switching exercised in `home_screen_test`. |
 | FR-2.2 | Plus Code generation | ✅ | **747/747** official Google vectors — 302 encoding, 420 decoding, 25 validity. |
@@ -21,7 +21,7 @@ Suite: **175 tests passing**, `flutter analyze` clean.
 | FR-3.1 | Resolve to a place name offline | ✅ | `23.7461, 90.3742` → **Dhanmondi, Dhaka, Dhaka Division, BD at 1.2917 km**, against the shipped database. |
 | FR-3.2 | Report distance honestly | ✅ | *near* vs *in* asserted, including a Sundarbans position in the real coverage gap. |
 | FR-3.3 | Nothing over open water | ✅ | `30.0, -40.0` → null, plus four more ocean probes. |
-| FR-4.1 | Map with position, offline, first launch | Built, device-unverified | 1,365 tiles render and read back correctly; the assembled screen is verified by widget test, but not yet by eye on a phone. |
+| FR-4.1 | Map with position, offline, first launch | ✅ | Confirmed by eye on a phone in airplane mode, on a first run with nothing cached: the bundled basemap rendered with the position marker on it. This is the product's differentiating claim and it now has a screenshot behind it. |
 | FR-9.1 | Zero-configuration first run | ✅ | One screen, no route stack, no wizard, no account. Asserted in `home_screen_test`. |
 | FR-9.2 | No accounts, tracking or advertising | ✅ | See the dependency audit below. |
 
@@ -63,9 +63,50 @@ state NFR-6 rules out. Failures now say so.
 
 ---
 
-### NFR-1 — total network independence · partially verified
+### NFR-1 — total network independence · ✅ verified on hardware
 
-Static evidence is complete:
+The acceptance test the requirement names has now been run. Samsung SM-S721B,
+Android 16, 2026-08-15.
+
+**The device was made genuinely offline**, not merely told to be:
+
+```
+airplane_mode_on = 1        wifi_on = 0
+ping 8.8.8.8  ->  connect: Network is unreachable
+ping pub.dev  ->  ping: unknown host pub.dev
+```
+
+**The app was installed fresh in that state** — no extracted assets, no cache,
+a new UID (10569) so its network accounting started from zero.
+
+**Cold start: 1,453 ms**, measured by `am start -W`, `LaunchState: COLD`. That
+run also extracted 28.5 MB of bundled assets, and still came in under the
+2-second cold-start figure in NFR-4.
+
+**What worked with the radios off:**
+
+| | |
+|---|---|
+| Bundled world basemap rendered, correctly oriented | FR-4.1 |
+| "Searching / No fix yet", with an explanation of why the first fix is slow | NFR-6, FR-1.1 |
+| Offline search returned *Dhanmondi, Dhaka, Dhaka Division, BD* | FR-8.1 |
+| Distance omitted, because there was genuinely no fix to measure from | FR-8.1 |
+| No Flutter errors in logcat throughout | |
+
+**Zero outbound requests, measured.** After the session, `dumpsys netstats
+detail` was searched for the app's UID:
+
+```
+UID stats      section:  0 entries for uid=10569
+UID tag stats  section:  0 entries for uid=10569
+BPF map content:         1 entry  (kernel tracking table; carries no bytes)
+```
+
+Other applications appear throughout both byte-accounting sections. Fenrir
+appears in neither. It did not merely fail to reach the network — it never
+asked.
+
+Static evidence, unchanged and still complete:
 
 - No analytics, advertising, crash-reporting or telemetry package anywhere in
   the dependency graph. Searched for firebase, crashlytics, sentry, amplitude,
@@ -77,10 +118,6 @@ Static evidence is complete:
   provider, which this app does not use) and `package_info_plus`.
 - The map is given `MbTilesTileProvider` explicitly; the network provider is
   never constructed.
-
-**Outstanding:** the acceptance test the requirement actually names — the full
-regression walkthrough on a device in airplane mode with zero outbound requests
-observed. Needs hardware.
 
 ### NFR-2 — place resolution under 50 ms at p95 · ✅ verified
 
@@ -108,9 +145,14 @@ release AAB        29.73 MB  of 200 MB     (15%)   arm64, per-device download
 The basemap came in at a fifth of the 14.3 MB the specification estimated for a
 vector tier at the same zoom range.
 
-### NFR-4 — 60 fps, cold start under 2 s · not verified
+### NFR-4 — 60 fps, cold start under 2 s · partially verified
 
-Requires profile-mode runs on hardware. Nothing here substitutes for it.
+**Cold start: 1,453 ms** on the reference handset (`am start -W`,
+`LaunchState: COLD`), on a first run that also extracted 28.5 MB of assets.
+Inside the 2-second figure.
+
+**Outstanding:** sustained 60 fps during pan and zoom. Needs a profile-mode run
+with the performance overlay; a debug build's frame times prove nothing.
 
 ### NFR-5 — battery behaviour · out of scope
 
@@ -151,7 +193,7 @@ as the screen being usable with the screen reader on.
 
 | Item | Why it matters |
 |---|---|
-| **Device pass in airplane mode** | The acceptance test NFR-1 names. Also the only way to verify FR-1.1's GNSS-only behaviour, FR-4.1 by eye, and NFR-4. |
+| **Sustained 60 fps** | NFR-4's other half. Needs a profile-mode run with the performance overlay. |
 | **TalkBack pass** | NFR-7. |
 | **Release signing** | `signingConfig = signingConfigs.getByName("debug")` is still the stock TODO in `android/app/build.gradle.kts`. **Not shippable as-is.** |
 | **ODbL position** | Only affects Tier 2 regional packs, which are out of this milestone. Tier 1 avoids it entirely by using public-domain Natural Earth. |
