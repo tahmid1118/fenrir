@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -i \"s|^import 'package:sqflite/sqflite.dart';|import 'database.dart';|\" lib/src/data/place_repository.dart)",
+      "Bash(sed -i \"s|\\(factory ?? databaseFactory\\)|\\(factory ?? appDatabaseFactory\\)|\" lib/src/data/place_repository.dart)",
+      "Bash(sed -i \"s|^import 'package:sqflite/sqflite.dart';|import '../data/database.dart';|\" lib/src/map/mbtiles_tile_provider.dart)",
+      "Bash(sed -i \"s|\\(factory ?? databaseFactory\\)|\\(factory ?? appDatabaseFactory\\)|\" lib/src/map/mbtiles_tile_provider.dart)"
+    ]
+  }
+}

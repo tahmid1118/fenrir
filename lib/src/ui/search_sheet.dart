@@ -49,6 +49,9 @@ class _SearchSheetState extends State<SearchSheet> {
   /// Set when the typed text is itself a position (FR-8.2).
   ParsedCoordinate? _coordinate;
 
+  /// Set when the last search threw rather than returning nothing.
+  bool _failed = false;
+
   /// Guards against an earlier, slower query overwriting a later one.
   int _generation = 0;
 
@@ -97,14 +100,28 @@ class _SearchSheetState extends State<SearchSheet> {
     setState(() {
       _searching = true;
       _coordinate = coordinate;
+      _failed = false;
     });
-    final results = await widget.onSearch(trimmed);
+
+    List<PlaceSearchResult> results;
+    var failed = false;
+    try {
+      results = await widget.onSearch(trimmed);
+    } on Object {
+      // A search that throws must not leave the spinner running forever. That
+      // is how a missing SQLite module presented on a real device: a progress
+      // bar that never stopped and no explanation, which is precisely the
+      // unexplained state NFR-6 rules out.
+      results = const [];
+      failed = true;
+    }
 
     // A slower earlier query must not clobber a later one's results.
     if (!mounted || generation != _generation) return;
     setState(() {
       _results = results;
       _searching = false;
+      _failed = failed;
       _lastQuery = trimmed;
     });
   }
@@ -162,6 +179,30 @@ class _SearchSheetState extends State<SearchSheet> {
       );
     }
     final coordinate = _coordinate;
+
+    if (_failed && _results.isEmpty && coordinate == null) {
+      return _hint(
+        theme,
+        Icons.error_outline,
+        'Search is unavailable',
+        'The offline index could not be read on this device. '
+            'Everything else still works.',
+      );
+    }
+
+    // Typed something the last completed search does not yet answer. This
+    // covers both the debounce window and a query in flight; keying it on
+    // `_searching` alone left the sheet blank for the debounce interval, which
+    // on a device reads as broken rather than busy.
+    final pending = _controller.text.trim() != _lastQuery;
+    if (_results.isEmpty && coordinate == null && pending) {
+      return _hint(
+        theme,
+        Icons.hourglass_empty,
+        'Searching…',
+        'Looking through the offline place database.',
+      );
+    }
 
     if (_results.isEmpty && coordinate == null && !_searching &&
         _lastQuery.isNotEmpty) {

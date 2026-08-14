@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:sqflite/sqflite.dart';
+import 'database.dart';
 
 import '../geo/haversine.dart';
 import 'models.dart';
@@ -27,7 +27,7 @@ class PlaceRepository {
     String path, {
     DatabaseFactory? factory,
   }) async {
-    final db = await (factory ?? databaseFactory).openDatabase(
+    final db = await (factory ?? appDatabaseFactory).openDatabase(
       path,
       options: OpenDatabaseOptions(readOnly: true, singleInstance: false),
     );

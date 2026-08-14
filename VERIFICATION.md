@@ -27,6 +27,42 @@ Suite: **175 tests passing**, `flutter analyze` clean.
 
 ## Non-functional requirements
 
+## Device run — 2026-08-15, Samsung SM-S721B, Android 16
+
+The app was installed, granted location, and driven on real hardware in Dhaka.
+
+**Confirmed working:**
+
+- The bundled Natural Earth basemap renders, correctly oriented, with the
+  position marker on it (FR-4.1).
+- Offline place resolution: *Paltan, Dhaka, Dhaka Division, BD · 3.5 km*
+  (FR-3.1, FR-3.2).
+- Fix quality tracked a real receiver honestly (FR-1.2). It opened at
+  **"Approximate · ±29 m, low precision"** in amber, then moved to **"GPS fix ·
+  ±6.5 m"** in mint as the fix improved — naming *which* problem it had, not
+  just that it had one.
+- Altitude with its own accuracy: *27 m ±5 m* (FR-2.4).
+- Offline search with distance and bearing: *Chattogram → 214 km SE* (FR-8.1).
+- Panning dropped follow-mode and revealed the recentre control.
+
+**One defect found that 230 passing tests had missed:**
+
+Search failed on device with `no such module: fts5`. Android's system SQLite is
+whatever the vendor compiled, and this handset has FTS5 out. The tests passed
+because `sqflite_common_ffi` bundles its own SQLite — they were running against
+a different engine than the device. The app now bundles SQLite too, so the two
+are the same. Fixed and re-verified on the same handset.
+
+A second, smaller defect surfaced with it: the failing search left a progress
+bar spinning forever with no explanation, which is exactly the unexplained
+state NFR-6 rules out. Failures now say so.
+
+**Known limitation, not a defect:** `place_fts` indexes place names only, so
+"Chittagong" finds nothing while "Chattogram" — the city's actual GeoNames name
+— finds it. Widening it means rebuilding the database.
+
+---
+
 ### NFR-1 — total network independence · partially verified
 
 Static evidence is complete:

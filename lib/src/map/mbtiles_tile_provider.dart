@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:sqflite/sqflite.dart';
+import '../data/database.dart';
 
 /// Serves basemap tiles to `flutter_map` out of the bundled MBTiles archive.
 ///
@@ -24,7 +24,7 @@ class MbTilesTileProvider extends TileProvider {
     String path, {
     DatabaseFactory? factory,
   }) async {
-    final db = await (factory ?? databaseFactory).openDatabase(
+    final db = await (factory ?? appDatabaseFactory).openDatabase(
       path,
       options: OpenDatabaseOptions(readOnly: true, singleInstance: false),
     );

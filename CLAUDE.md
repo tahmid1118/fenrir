@@ -85,6 +85,27 @@ Things that will bite you:
 - **`place_fts` is external-content with no sync triggers.** Any write to
   `place` silently desyncs the index unless the FTS table is updated in the same
   transaction. Harmless while the asset is read-only.
+- **`place_fts` indexes `name` only.** Division and country names are not
+  searchable, so "Chittagong" finds nothing while "Chattogram" — the city's
+  actual GeoNames name — finds it. Widening this means rebuilding the database.
+
+### SQLite is bundled, not borrowed
+
+The app uses `sqflite_common_ffi`, whose native library `package:sqlite3` builds
+from source, rather than the `sqflite` plugin and the platform's SQLite.
+
+This is not a preference. A device run failed with **`no such module: fts5`** on
+a current Samsung handset (Android 16) while all 230 tests passed, because
+Android's system SQLite is whatever the vendor compiled and this one has FTS5
+out. The tests passed because `sqflite_common_ffi` bundles its *own* SQLite —
+**they were running against a different engine than the device.**
+
+Bundling makes the engine identical in tests, on a phone and on a desktop, so a
+capability proven once is proven everywhere. It costs about 1.5 MB per ABI
+against an NFR-3 budget with more than 30 MB of headroom.
+
+**Do not reintroduce `package:sqflite`.** Open databases through
+`appDatabaseFactory` in `lib/src/data/database.dart`.
 
 ### Why place resolution is two-stage
 
@@ -169,10 +190,16 @@ also asserts the database's identity (235,242 rows, BD 161, US 21,782) so an
 asset swap fails loudly rather than silently invalidating every distance
 fixture.
 
-`sqflite_common_ffi` needs **no separate `sqlite3` library** on Windows and has
-FTS5 enabled. Pass an **absolute** path to `openDatabase` — relative paths
-resolve against the package's own `.dart_tool` databases directory, not the
-project root.
+Pass an **absolute** path to `openDatabase` — relative paths resolve against
+the package's own `.dart_tool` databases directory, not the project root. This
+has bitten twice: once in a test, once in the basemap builder, where it wrote
+all 1,365 tiles somewhere nobody was looking and only failed afterwards.
+
+Because the app now bundles the same SQLite the tests use, a capability
+confirmed in a test is genuinely confirmed on device. That was not true before
+— see the FTS5 note above — and it is the reason the engine is bundled.
+Platform behaviour that cannot be bundled (GNSS, permissions, the share sheet)
+still has to be checked on hardware.
 
 Platform statics (`geolocator`) and I/O (`rootBundle`, `path_provider`) are
 injected behind interfaces so state machines are testable without a device.

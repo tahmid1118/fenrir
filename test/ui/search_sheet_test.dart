@@ -121,6 +121,43 @@ void main() {
       expect(find.text('Search 235,242 places'), findsOneWidget);
     });
 
+    testWidgets('shows a pending state before the first result arrives',
+        (tester) async {
+      // On a device the sheet was blank for the whole debounce interval, which
+      // reads as broken rather than busy. Keying the pending state on the
+      // in-flight flag alone missed that window entirely.
+      final gate = Completer<List<PlaceSearchResult>>();
+      await pump(tester, onSearch: (_) async => gate.future);
+
+      await tester.enterText(find.byType(TextField), 'dha');
+      await tester.pump();
+
+      expect(find.text('Searching…'), findsOneWidget);
+
+      gate.complete([result('Dhaka')]);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Searching…'), findsNothing);
+      expect(find.widgetWithText(ListTile, 'Dhaka'), findsOneWidget);
+    });
+
+    testWidgets('a failed search explains itself instead of spinning forever',
+        (tester) async {
+      // This is how a missing SQLite module presented on a real device: a
+      // progress bar that never stopped and no explanation.
+      await pump(tester, onSearch: (_) async => throw StateError('no fts5'));
+
+      await tester.enterText(find.byType(TextField), 'dha');
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Search is unavailable'), findsOneWidget);
+      expect(find.textContaining('Everything else still works'),
+          findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('says so when nothing matches', (tester) async {
       await pump(tester, onSearch: (_) async => const []);
 

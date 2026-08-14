@@ -37,9 +37,22 @@ dependencies:
   geolocator: ^14.0.3
   flutter_map: ^8.3.1
   latlong2: ^0.10.1
-  sqflite: ^2.4.3
   path_provider: ^2.1.6
   share_plus: ^13.3.0
+
+  # SQLite, bundled rather than borrowed from the platform.
+  #
+  # This replaced the `sqflite` plugin after a device run failed with
+  # "no such module: fts5" while 230 tests passed. Android's system SQLite is
+  # whatever the vendor shipped, and this Samsung build (Android 16) has FTS5
+  # compiled out, so FR-8.1's search could not work at all on it.
+  #
+  # The deeper problem was that the tests ran against a *different* SQLite from
+  # the device: sqflite_common_ffi bundles its own. Using it everywhere makes
+  # the engine deterministic across devices and makes the test suite genuinely
+  # representative, which is what let the bug through in the first place.
+  # The native library is built from source by package:sqlite3 via build hooks.
+  sqflite_common_ffi: ^2.3.6
 
   # UTM and MGRS conversion for FR-2.1. Pure Dart, BSD-3, no network. Chosen
   # over hand-rolling because the Krüger series expansion behind an accurate
@@ -60,17 +73,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  # Lets the place-resolution suite run against the real 25.8 MB places.db on
-  # the desktop, with no device and no mocks. The spec's verified fixtures
-  # (Dhanmondi at 1.29 km, open water returning nothing) are only meaningful as
-  # tests if they run against the actual shipped database.
-  #
-  # Verified on this machine: needs no separate sqlite3 library, and its SQLite
-  # build has FTS5 enabled, so place_fts is exercisable from tests too. Pass an
-  # absolute path to openDatabase — relative paths resolve against the package's
-  # own .dart_tool databases directory, not the project root.
-  sqflite_common_ffi: ^2.3.6
 
   # Rasterises Natural Earth geometry into basemap tiles in tools/. Build-time
   # only; never shipped in the app.
