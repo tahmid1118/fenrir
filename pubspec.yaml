@@ -40,6 +40,13 @@ dependencies:
   path_provider: ^2.1.6
   share_plus: ^13.3.0
 
+  # Opens the SMS composer for FR-7.1. SMS is the right channel precisely
+  # because it rides the cellular voice network, which is available in places
+  # a data connection is not -- the situation this whole product is built for.
+  # Already in the tree transitively via share_plus; declared because the app
+  # calls it directly.
+  url_launcher: ^6.3.1
+
   # SQLite, bundled rather than borrowed from the platform.
   #
   # This replaced the `sqflite` plugin after a device run failed with

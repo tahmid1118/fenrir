@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../data/models.dart';
 import '../geo/coordinate_formats.dart';
-import '../geo/plus_code.dart';
+import '../share/position_message.dart';
 import '../location/position_fix.dart';
 
 /// Shows the current position in one notation at a time, and lets the user
@@ -106,6 +107,11 @@ class PositionPanel extends StatelessWidget {
               icon: const Icon(Icons.ios_share, size: 18),
               label: const Text('Share'),
             ),
+            TextButton.icon(
+              onPressed: () => _sendSms(context),
+              icon: const Icon(Icons.sms_outlined, size: 18),
+              label: const Text('SMS'),
+            ),
             if (onSave != null)
               TextButton.icon(
                 onPressed: onSave,
@@ -138,30 +144,45 @@ class PositionPanel extends StatelessWidget {
     );
   }
 
-  /// Builds a message a recipient with no special app can act on (FR-2.3).
+  /// The message a recipient with no special app can act on (FR-2.3, FR-7.1).
   ///
-  /// Plain decimal degrees leads the list because every mapping application and
-  /// search engine accepts it. The Plus Code follows because it survives being
-  /// read aloud over a voice call, which matters when there is no data
-  /// connection — the situation this whole product is built for.
-  String shareText() {
-    final lines = <String>[];
+  /// The same body goes to the share sheet and to SMS. There is no reason for
+  /// the two to differ, and one composer means the wording can be reasoned
+  /// about — and length-checked against the SMS segment limit — in one place.
+  String shareText() =>
+      composePositionMessage(fix: fix, match: match).body;
 
-    final place = match;
-    if (place != null) {
-      lines.add(place.proximity == Proximity.inside
-          ? place.place.displayName
-          : 'Near ${place.place.displayName}');
+  /// Opens the platform SMS composer, prefilled (FR-7.1).
+  ///
+  /// The message is composed here and handed over; it is never sent
+  /// automatically. FR-9.2 requires that position data leave the device only
+  /// through an action the user explicitly initiates, and the send button in
+  /// the messaging app is that action.
+  Future<void> _sendSms(BuildContext context) async {
+    final message = composePositionMessage(fix: fix, match: match);
+    final uri = smsUri(body: message.body);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final opened = await launchUrl(uri);
+      if (!opened && context.mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('No messaging app is available on this device'),
+          ),
+        );
+      }
+    } on Object {
+      // A device with no SMS capability at all -- a tablet, say -- throws
+      // rather than returning false. Either way the user needs telling, not a
+      // silent no-op.
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('No messaging app is available on this device'),
+        ),
+      );
     }
-
-    lines
-      ..add(formatDecimalDegreesPlain(fix.latitude, fix.longitude))
-      ..add('Plus Code: ${encodePlusCode(fix.latitude, fix.longitude)}');
-
-    if (fix.accuracyMeters > 0) {
-      lines.add('Accurate to about ${fix.accuracyMeters.round()} m');
-    }
-    return lines.join('\n');
   }
 
   Future<void> _share(BuildContext context) async {

@@ -49,5 +49,18 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+
+        <!-- FR-7.1 opens the SMS composer. Since Android 11 an app cannot see
+             which activities handle a scheme unless it declares the intent
+             here, and without this launching an sms: URI fails on every modern
+             device while working fine on older ones. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="sms"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO"/>
+            <data android:scheme="smsto"/>
+        </intent>
     </queries>
 </manifest>

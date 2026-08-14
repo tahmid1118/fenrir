@@ -9,7 +9,9 @@
       "Bash(sed -i \"s|^    tileProvider = await _openBasemap\\(basemap.path\\);|    tileProvider = await _openBasemap\\(basemap.path\\);\\\\n    _waypoints = await _openWaypoints\\(\\);|\" lib/src/ui/home_controller.dart)",
       "Bash(sed -i \"s|^import '../geo/coordinate_formats.dart';|import '../data/models.dart';\\\\nimport '../geo/coordinate_formats.dart';|\" lib/src/ui/home_screen.dart)",
       "Bash(sed -i \"s|^import 'search_sheet.dart';|import 'search_sheet.dart';\\\\nimport 'waypoint_sheet.dart';|\" lib/src/ui/home_screen.dart)",
-      "Bash(sed -i \"s|                      _SearchButton\\(onPressed: _openSearch\\),|                      _SavedButton\\(onPressed: _openWaypoints\\),\\\\n                      const SizedBox\\(width: 8\\),\\\\n                      _SearchButton\\(onPressed: _openSearch\\),|\" lib/src/ui/home_screen.dart)"
+      "Bash(sed -i \"s|                      _SearchButton\\(onPressed: _openSearch\\),|                      _SavedButton\\(onPressed: _openWaypoints\\),\\\\n                      const SizedBox\\(width: 8\\),\\\\n                      _SearchButton\\(onPressed: _openSearch\\),|\" lib/src/ui/home_screen.dart)",
+      "Bash(sed -i \"s|^import '../geo/plus_code.dart';|import '../share/position_message.dart';|\" lib/src/ui/position_panel.dart)",
+      "Bash(sed -i \"s|^import 'package:share_plus/share_plus.dart';|import 'package:share_plus/share_plus.dart';\\\\nimport 'package:url_launcher/url_launcher.dart';|\" lib/src/ui/position_panel.dart)"
     ]
   }
 }
