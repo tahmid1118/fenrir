@@ -62,6 +62,56 @@ pixels, and coastlines drawn straight to 256 px look visibly jagged on a phone.
   the path absolute; without that the archive lands somewhere nobody looks and
   the build appears to succeed.
 
+## `build_places_db.dart`
+
+Rebuilds the Tier 1 place database from the GeoNames export.
+
+```bash
+dart run tools/build_places_db.dart                       # -> assets/db/places.db
+dart run tools/build_places_db.dart --out /tmp/check.db   # compare without overwriting
+dart run tools/build_places_db.dart --min-population 500
+```
+
+Takes about 5 seconds and produces roughly 25.9 MB. On completion it prints the
+figures the requirements specification records, so a rebuild can be checked
+against the database that was measured.
+
+### Source data
+
+Also gitignored. From `https://download.geonames.org/export/dump/`:
+
+```
+cities500.zip           # extract cities500.txt, ~39 MB
+admin1CodesASCII.txt    # first-level division names
+admin2Codes.txt         # second-level division names
+```
+
+The two code files are optional — without them places still resolve, they just
+carry blank division names — so a missing lookup table warns rather than stops
+the build.
+
+GeoNames is **CC BY 4.0**: attribution is required. See `NOTICE.md`.
+
+### Why the shipped database is not simply regenerated
+
+A rebuild on 2026-08-15 produced **235,311** places against the **235,242** the
+specification measured on 2026-08-12. Country counts and the FR-3.1 fixture
+match exactly (BD 161, US 21,782, Dhanmondi at 1.29 km); the 69 extra rows are
+three days of upstream GeoNames edits, not a defect in this script.
+
+`assets/db/places.db` is therefore left as-is. Every distance fixture in the
+test suite rests on that exact dataset, and `place_repository_test` asserts the
+row count so a swap fails loudly. If you do regenerate it, expect to update
+those constants and re-verify the fixtures — and bump
+`BundledAssetStore.places.version`, or devices that already extracted the old
+copy will keep using it.
+
+### One trap
+
+`batch.commit()` already runs inside its own transaction. Wrapping it in a
+manual `BEGIN`/`COMMIT` fails with *cannot start a transaction within a
+transaction*.
+
 ## Verifying output by eye
 
 The tests cover the geometry, but the fastest way to confirm a rendering change
