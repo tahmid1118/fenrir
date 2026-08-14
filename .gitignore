@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Build-time source data for tools/. These are large public-domain downloads
+# (Natural Earth GeoJSON, GeoNames cities500) that the build scripts fetch on
+# demand; the generated assets are committed instead. See tools/README.md.
+/tools/data/

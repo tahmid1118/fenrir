@@ -41,9 +41,35 @@ dependencies:
   path_provider: ^2.1.6
   share_plus: ^13.3.0
 
+  # UTM and MGRS conversion for FR-2.1. Pure Dart, BSD-3, no network. Chosen
+  # over hand-rolling because the Krüger series expansion behind an accurate
+  # transverse Mercator projection is genuinely error-prone. Plus Codes are
+  # implemented in-repo instead (see lib/src/geo/plus_code.dart): the
+  # open_location_code package pins latlong2 ^0.9.0, which cannot resolve
+  # against the ^0.10.1 flutter_map needs.
+  geobase: ^1.5.0
+
+  # Path joining for the bundled-asset extraction in lib/src/data.
+  path: ^1.9.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Lets the place-resolution suite run against the real 25.8 MB places.db on
+  # the desktop, with no device and no mocks. The spec's verified fixtures
+  # (Dhanmondi at 1.29 km, open water returning nothing) are only meaningful as
+  # tests if they run against the actual shipped database.
+  #
+  # Verified on this machine: needs no separate sqlite3 library, and its SQLite
+  # build has FTS5 enabled, so place_fts is exercisable from tests too. Pass an
+  # absolute path to openDatabase — relative paths resolve against the package's
+  # own .dart_tool databases directory, not the project root.
+  sqflite_common_ffi: ^2.3.6
+
+  # Rasterises Natural Earth geometry into basemap tiles in tools/. Build-time
+  # only; never shipped in the app.
+  image: ^4.9.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
