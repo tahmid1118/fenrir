@@ -30,6 +30,13 @@ abstract class HomeDataSource {
 
   Future<PlaceMatch?> nearestPlace(double latitude, double longitude);
 
+  /// Full-text search over place names (FR-8.1).
+  Future<List<PlaceSearchResult>> searchPlaces(
+    String query, {
+    double? fromLatitude,
+    double? fromLongitude,
+  });
+
   Future<void> dispose();
 }
 
@@ -63,6 +70,20 @@ class BundledHomeDataSource implements HomeDataSource {
   @override
   Future<PlaceMatch?> nearestPlace(double latitude, double longitude) async {
     return _places?.nearestPlace(latitude, longitude);
+  }
+
+  @override
+  Future<List<PlaceSearchResult>> searchPlaces(
+    String query, {
+    double? fromLatitude,
+    double? fromLongitude,
+  }) async {
+    return await _places?.searchPlaces(
+          query,
+          fromLatitude: fromLatitude,
+          fromLongitude: fromLongitude,
+        ) ??
+        const [];
   }
 
   @override
@@ -173,6 +194,16 @@ class HomeController extends ChangeNotifier {
   /// Re-runs the permission flow, for the user who granted it in system
   /// settings and came back.
   Future<void> retryLocation() => _location.start();
+
+  /// Searches place names, measuring from the current fix when there is one.
+  Future<List<PlaceSearchResult>> search(String query) {
+    final current = fix;
+    return _data.searchPlaces(
+      query,
+      fromLatitude: current?.latitude,
+      fromLongitude: current?.longitude,
+    );
+  }
 
   void setFollowPosition(bool value) {
     if (followPosition == value) return;

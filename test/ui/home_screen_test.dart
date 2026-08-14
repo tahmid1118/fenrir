@@ -73,6 +73,21 @@ class FakeData implements HomeDataSource {
     return match;
   }
 
+  /// What every search returns, regardless of the query.
+  List<PlaceSearchResult> searchResults = const [];
+
+  String? lastQuery;
+
+  @override
+  Future<List<PlaceSearchResult>> searchPlaces(
+    String query, {
+    double? fromLatitude,
+    double? fromLongitude,
+  }) async {
+    lastQuery = query;
+    return searchResults;
+  }
+
   @override
   Future<void> dispose() async {}
 }

@@ -99,6 +99,93 @@ class PlaceRepository {
     return null;
   }
 
+  /// Full-text search across place names (FR-8.1).
+  ///
+  /// Uses the `place_fts` index that already ships in the database and was,
+  /// until now, 5.3 MB of the bundle doing nothing.
+  ///
+  /// Results are ordered by population rather than by relevance score alone.
+  /// Every hit matches the typed prefix equally well as far as bm25 is
+  /// concerned, so a raw rank ordering puts hamlets above capitals; someone
+  /// typing "paris" almost always means the large one. An exact name match is
+  /// promoted above all of them.
+  ///
+  /// [fromLatitude] and [fromLongitude] are optional: searching before the
+  /// receiver has a fix is a normal thing to do, and the results are still
+  /// useful without a distance.
+  Future<List<PlaceSearchResult>> searchPlaces(
+    String query, {
+    double? fromLatitude,
+    double? fromLongitude,
+    int limit = 30,
+  }) async {
+    final expression = buildMatchExpression(query);
+    if (expression == null) return const [];
+
+    final rows = await _db.rawQuery(
+      'SELECT p.id, p.name, p.admin1, p.admin2, p.country, '
+      'p.lat_e5, p.lon_e5, p.pop, p.tz '
+      'FROM place_fts f JOIN place p ON p.id = f.rowid '
+      'WHERE place_fts MATCH ? '
+      'ORDER BY (CASE WHEN lower(p.name) = ? THEN 0 ELSE 1 END), '
+      'p.pop DESC '
+      'LIMIT ?',
+      [expression, query.trim().toLowerCase(), limit],
+    );
+
+    final hasOrigin = fromLatitude != null && fromLongitude != null;
+    return rows.map((row) {
+      final place = Place.fromRow(row);
+      return PlaceSearchResult(
+        place: place,
+        distanceKm: hasOrigin
+            ? distanceKm(
+                fromLatitude,
+                fromLongitude,
+                place.latitude,
+                place.longitude,
+              )
+            : null,
+        bearingDeg: hasOrigin
+            ? bearingDeg(
+                fromLatitude,
+                fromLongitude,
+                place.latitude,
+                place.longitude,
+              )
+            : null,
+      );
+    }).toList();
+  }
+
+  /// Turns typed text into a safe FTS5 MATCH expression.
+  ///
+  /// FTS5 has its own query language, and characters a user types perfectly
+  /// reasonably — quotes, asterisks, hyphens, colons, parentheses, the words
+  /// AND, OR and NOT — are operators in it. Passing raw input through throws a
+  /// syntax error, which for a search box means every apostrophe crashes the
+  /// screen. Each token is therefore quoted, which makes it a literal, and
+  /// given a trailing `*` so the search matches as the user is still typing.
+  ///
+  /// Returns null when nothing searchable remains.
+  ///
+  /// Exposed for testing: this is the boundary where hostile input meets a
+  /// query parser.
+  static String? buildMatchExpression(String query) {
+    final tokens = query
+        // Anything that is not a letter, digit or mark is a separator. This
+        // keeps accented and non-Latin characters, which matter for a database
+        // where names like Şobḩān and 上海 are ordinary.
+        .split(RegExp(r'[^\p{L}\p{N}\p{M}]+', unicode: true))
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (tokens.isEmpty) return null;
+
+    // Double quotes cannot appear after the split above, so quoting is safe
+    // without further escaping.
+    return tokens.map((t) => '"$t"*').join(' ');
+  }
+
   /// Rows whose coordinates fall inside the bounding box around a position.
   Future<List<Place>> _within(
     double latitude,

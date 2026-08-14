@@ -138,3 +138,52 @@ class PlaceMatch {
       'PlaceMatch(${place.displayName}, '
       '${distanceKm.toStringAsFixed(2)} km, ${proximity.name})';
 }
+
+/// A search hit, with how far away it is from wherever the user is now.
+///
+/// FR-8.1 asks for distance and bearing alongside each result. Both are null
+/// when there is no fix to measure from — searching before the receiver has
+/// locked on is a normal thing to do, and the results are still useful.
+@immutable
+class PlaceSearchResult {
+  const PlaceSearchResult({
+    required this.place,
+    this.distanceKm,
+    this.bearingDeg,
+  });
+
+  final Place place;
+
+  /// Great-circle distance from the current position, in kilometres.
+  final double? distanceKm;
+
+  /// Initial bearing from the current position, degrees clockwise from north.
+  final double? bearingDeg;
+
+  /// The bearing as a compass point, which is what a person can act on.
+  ///
+  /// "NNE" is directly usable standing in a field; "22 degrees" is not.
+  String? get compassPoint {
+    final bearing = bearingDeg;
+    if (bearing == null) return null;
+    const points = [
+      'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', //
+      'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW',
+    ];
+    return points[(((bearing % 360) / 22.5) + 0.5).floor() % 16];
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PlaceSearchResult &&
+          place == other.place &&
+          distanceKm == other.distanceKm &&
+          bearingDeg == other.bearingDeg);
+
+  @override
+  int get hashCode => Object.hash(place, distanceKm, bearingDeg);
+
+  @override
+  String toString() => 'PlaceSearchResult(${place.displayName})';
+}

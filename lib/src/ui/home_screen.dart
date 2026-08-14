@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../data/models.dart';
 import '../geo/coordinate_formats.dart';
 import '../location/position_fix.dart';
 import 'fix_indicator.dart';
@@ -9,6 +10,7 @@ import 'home_controller.dart';
 import 'map_view.dart';
 import 'place_banner.dart';
 import 'position_panel.dart';
+import 'search_sheet.dart';
 
 /// The single screen the app opens onto.
 ///
@@ -69,6 +71,38 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
+  /// Opens offline search (FR-8.1).
+  ///
+  /// A sheet rather than a route: FR-9.1 is about the position display never
+  /// being gated, and a modal the user can dismiss with a swipe keeps the map
+  /// one gesture away.
+  Future<void> _openSearch() async {
+    final selected = await showModalBottomSheet<PlaceSearchResult>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.72,
+          child: SearchSheet(
+            onSearch: _controller.search,
+            onSelected: (result) => Navigator.of(context).pop(result),
+          ),
+        ),
+      ),
+    );
+
+    if (selected != null && mounted) {
+      setState(() => _searchTarget = selected);
+    }
+  }
+
+  /// A place chosen from search, shown on the map until dismissed.
+  PlaceSearchResult? _searchTarget;
+
   @override
   void dispose() {
     unawaited(_clock?.cancel());
@@ -92,6 +126,13 @@ class _HomeScreenState extends State<HomeScreen> {
               quality: _controller.qualityAt(_now),
               followPosition: _controller.followPosition,
               onUserPanned: () => _controller.setFollowPosition(false),
+              target: _searchTarget == null
+                  ? null
+                  : (
+                      latitude: _searchTarget!.place.latitude,
+                      longitude: _searchTarget!.place.longitude,
+                      label: _searchTarget!.place.displayName,
+                    ),
             ),
           ),
           SafeArea(
@@ -110,10 +151,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const Spacer(),
-                      if (fix != null && !_controller.followPosition)
+                      _SearchButton(onPressed: _openSearch),
+                      if (fix != null && !_controller.followPosition) ...[
+                        const SizedBox(width: 8),
                         _RecentreButton(onPressed: _controller.recentre),
+                      ],
                     ],
                   ),
+                  if (_searchTarget != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: _TargetChip(
+                        result: _searchTarget!,
+                        onDismiss: () => setState(() => _searchTarget = null),
+                      ),
+                    ),
                   if (_controller.assetStatus != AssetStatus.ready)
                     Padding(
                       padding: const EdgeInsets.only(top: 10),
@@ -325,6 +377,92 @@ class _AssetNotice extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Names the place a search marker refers to, and lets it be cleared.
+///
+/// A pin on the map with nothing explaining it is the kind of unexplained
+/// state NFR-6 rules out.
+class _TargetChip extends StatelessWidget {
+  const _TargetChip({required this.result, required this.onDismiss});
+
+  final PlaceSearchResult result;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final distance = result.distanceKm;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.92,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: theme.colorScheme.tertiary
+            .withValues(alpha: 0.5)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.place, size: 16, color: theme.colorScheme.tertiary),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    result.place.name,
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (distance != null)
+                    Text(
+                      '${distance < 1 ? '${(distance * 1000).round()} m' : '${distance.round()} km'} '
+                      '${result.compassPoint}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, size: 16),
+              tooltip: 'Clear searched place',
+              visualDensity: VisualDensity.compact,
+              onPressed: onDismiss,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchButton extends StatelessWidget {
+  const _SearchButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Search places offline',
+      child: IconButton.filledTonal(
+        onPressed: onPressed,
+        icon: const Icon(Icons.search, size: 20),
+        tooltip: 'Search places',
       ),
     );
   }

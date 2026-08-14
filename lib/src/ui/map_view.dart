@@ -21,7 +21,12 @@ class MapView extends StatefulWidget {
     required this.quality,
     this.followPosition = true,
     this.onUserPanned,
+    this.target,
   });
+
+  /// A place chosen from search, marked so the user can see where it is
+  /// relative to them (FR-8.1).
+  final ({double latitude, double longitude, String label})? target;
 
   /// Null while the archive is still being extracted on first run.
   final MbTilesTileProvider? tileProvider;
@@ -128,8 +133,37 @@ class _MapViewState extends State<MapView> {
             // map to render with zero outbound requests.
             errorTileCallback: (_, _, _) {},
           ),
+        if (widget.target != null) _targetLayer(theme, widget.target!),
         if (fix != null) ..._positionLayers(theme, fix),
         _attribution(theme),
+      ],
+    );
+  }
+
+  /// Marks a searched-for place, drawn beneath the position marker so it can
+  /// never obscure where the user actually is.
+  Widget _targetLayer(
+    ThemeData theme,
+    ({double latitude, double longitude, String label}) target,
+  ) {
+    return MarkerLayer(
+      markers: [
+        Marker(
+          point: LatLng(target.latitude, target.longitude),
+          width: 26,
+          height: 26,
+          child: Semantics(
+            label: 'Searched place: ${target.label}',
+            child: Icon(
+              Icons.place,
+              size: 26,
+              color: theme.colorScheme.tertiary,
+              shadows: [
+                Shadow(color: theme.colorScheme.surface, blurRadius: 3),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
