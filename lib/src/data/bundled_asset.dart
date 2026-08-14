@@ -75,6 +75,17 @@ class BundledAssetStore {
     version: 1,
   );
 
+  /// The Tier 1 world basemap: 1,365 tiles, zoom 0-5, behind FR-4.1.
+  ///
+  /// Bump [BundledAsset.version] whenever `tools/build_basemap.dart` is re-run
+  /// with different output, or devices that already extracted the old archive
+  /// will keep using it.
+  static const basemap = BundledAsset(
+    assetPath: 'assets/map/basemap.mbtiles',
+    fileName: 'basemap.mbtiles',
+    version: 1,
+  );
+
   /// Ensures [asset] exists on disk and returns it.
   ///
   /// Does nothing when an up-to-date copy is already present, which is the
