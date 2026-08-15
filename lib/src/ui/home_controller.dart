@@ -245,6 +245,10 @@ class HomeController extends ChangeNotifier {
         previous.longitude == current.longitude) {
       return;
     }
+    _heading.setPosition(
+      latitude: current.latitude,
+      longitude: current.longitude,
+    );
     unawaited(_resolvePlace(current));
   }
 

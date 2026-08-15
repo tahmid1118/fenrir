@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:meta/meta.dart';
 
+import '../geo/geomagnetism.dart';
+
 /// Which north a heading is measured from.
 ///
 /// The distinction is not pedantry. Magnetic north and true north differ by the
@@ -166,28 +168,88 @@ enum MapOrientation {
           : MapOrientation.northUp;
 }
 
-/// Streams smoothed headings, and nothing at all when there is no usable
-/// compass.
+/// Streams smoothed headings, corrected to true north where possible.
 class HeadingService {
-  HeadingService({HeadingSource? source, HeadingSmoother? smoother})
-      : _source = source ?? const CompassHeadingSource(),
-        _smoother = smoother ?? HeadingSmoother();
+  HeadingService({
+    HeadingSource? source,
+    HeadingSmoother? smoother,
+    GeomagneticModel? model,
+  })  : _source = source ?? const CompassHeadingSource(),
+        _smoother = smoother ?? HeadingSmoother(),
+        _model = model ?? GeomagneticModel.wmm2025;
 
   final HeadingSource _source;
   final HeadingSmoother _smoother;
+  final GeomagneticModel _model;
 
-  /// Readings, smoothed, with unreliable ones dropped.
+  double? _latitude;
+  double? _longitude;
+
+  /// The declination applied to the last reading, in degrees east of true
+  /// north. Null when no correction is being made.
+  double? declinationDegrees;
+
+  /// Supplies the position declination is computed for.
+  ///
+  /// Until a fix arrives there is nowhere to evaluate the model at, so
+  /// headings are reported as magnetic and labelled that way. Correction
+  /// begins the moment a position is known.
+  void setPosition({required double latitude, required double longitude}) {
+    _latitude = latitude;
+    _longitude = longitude;
+  }
+
+  /// Readings, smoothed, with unreliable ones dropped and declination applied.
   Stream<Heading?> headings() {
     return _source.headings().map((raw) {
       if (raw == null || !raw.isReliable) {
         _smoother.reset();
+        declinationDegrees = null;
         return null;
       }
+
+      final smoothed = _smoother.add(raw.degrees);
+      final corrected = _toTrueNorth(smoothed);
+
       return Heading(
-        degrees: _smoother.add(raw.degrees),
-        reference: raw.reference,
+        degrees: corrected.degrees,
+        reference: corrected.reference,
         accuracyDegrees: raw.accuracyDegrees,
       );
     });
+  }
+
+  /// Turns a magnetic heading into a true one, when it can.
+  ///
+  /// The compass measures magnetic north; the map is drawn to true north. The
+  /// angle between them exceeds twenty degrees across parts of North America,
+  /// so rotating the map by an uncorrected reading is visibly wrong there.
+  ///
+  /// Correction is skipped, and the heading stays labelled magnetic, when
+  /// there is no position to evaluate the model at or the model has expired.
+  /// Both are cases where a correction would be a guess, and a guess presented
+  /// as true north is worse than an honest magnetic one.
+  ({double degrees, HeadingReference reference}) _toTrueNorth(double magnetic) {
+    final latitude = _latitude;
+    final longitude = _longitude;
+    final now = DateTime.now();
+
+    if (latitude == null || longitude == null || _model.isExpiredAt(now)) {
+      declinationDegrees = null;
+      return (degrees: magnetic, reference: HeadingReference.magnetic);
+    }
+
+    final declination = _model.declinationAt(
+      latitude: latitude,
+      longitude: longitude,
+      when: now,
+    );
+    declinationDegrees = declination;
+
+    final trueHeading = (magnetic + declination) % 360;
+    return (
+      degrees: trueHeading < 0 ? trueHeading + 360 : trueHeading,
+      reference: HeadingReference.trueNorth,
+    );
   }
 }

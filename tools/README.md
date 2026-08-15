@@ -130,3 +130,31 @@ sqlite3 assets/map/basemap.mbtiles \
 
 That second tile should show Britain, the Alps and the boot of Italy. If it is
 upside down or empty, the TMS flip or the projection has regressed.
+
+## Regenerating the World Magnetic Model coefficients
+
+`lib/src/geo/wmm_coefficients.dart` embeds NOAA's `WMM.COF` verbatim so it can
+be diffed against the original rather than trusted. **The model expires in
+2029.** To update it:
+
+```bash
+curl -L -o wmm.zip \
+  https://www.ncei.noaa.gov/sites/default/files/2024-12/WMM2025COF.zip
+unzip wmm.zip
+
+{
+  echo "// GENERATED from the official NOAA WMM.COF."
+  echo "library;"
+  echo ""
+  echo "const String wmmCoefficients = r'''"
+  grep -v '^9999' WMM2025COF/WMM.COF
+  echo "''';"
+} > lib/src/geo/wmm_coefficients.dart
+
+cp WMM2025COF/WMM2025_TestValues.txt test/geo/fixtures/wmm2025_test_values.txt
+```
+
+The test values are the grading fixture — replace both together, or the suite
+will be checking a new model against an old model's answers. Find the current
+release at
+https://www.ncei.noaa.gov/products/world-magnetic-model/wmm-coefficients.

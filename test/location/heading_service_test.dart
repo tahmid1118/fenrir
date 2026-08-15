@@ -206,6 +206,98 @@ void main() {
     });
   });
 
+  group('declination correction', () {
+    test('reports magnetic until a position is known', () async {
+      // There is nowhere to evaluate the model at before the first fix, and a
+      // guessed correction presented as true north is worse than an honest
+      // magnetic heading.
+      final controller = StreamController<Heading?>();
+      final service = HeadingService(
+        source: FakeHeadingSource(controller),
+        smoother: HeadingSmoother(factor: 1),
+      );
+
+      final results = <Heading?>[];
+      final subscription = service.headings().listen(results.add);
+      addTearDown(subscription.cancel);
+
+      controller.add(heading(90));
+      await pumpEventQueue();
+
+      expect(results.single!.reference, HeadingReference.magnetic);
+      expect(results.single!.degrees, closeTo(90, 1e-6));
+      expect(service.declinationDegrees, isNull);
+      await controller.close();
+    });
+
+    test('corrects to true north once a position is known', () async {
+      final controller = StreamController<Heading?>();
+      final service = HeadingService(
+        source: FakeHeadingSource(controller),
+        smoother: HeadingSmoother(factor: 1),
+      );
+
+      // Seattle, where declination is large enough to matter: about +15 east.
+      service.setPosition(latitude: 47.6062, longitude: -122.3321);
+
+      final results = <Heading?>[];
+      final subscription = service.headings().listen(results.add);
+      addTearDown(subscription.cancel);
+
+      controller.add(heading(0));
+      await pumpEventQueue();
+
+      final result = results.single!;
+      expect(result.reference, HeadingReference.trueNorth);
+      // Pointing at magnetic north there means facing appreciably east of
+      // true north, which is exactly the error this corrects.
+      expect(result.degrees, greaterThan(10));
+      expect(result.degrees, lessThan(20));
+      expect(service.declinationDegrees, isNotNull);
+      await controller.close();
+    });
+
+    test('barely changes the heading where declination is small', () async {
+      final controller = StreamController<Heading?>();
+      final service = HeadingService(
+        source: FakeHeadingSource(controller),
+        smoother: HeadingSmoother(factor: 1),
+      );
+      service.setPosition(latitude: 23.7461, longitude: 90.3742);
+
+      final results = <Heading?>[];
+      final subscription = service.headings().listen(results.add);
+      addTearDown(subscription.cancel);
+
+      controller.add(heading(90));
+      await pumpEventQueue();
+
+      expect(results.single!.degrees, closeTo(90, 2.0));
+      await controller.close();
+    });
+
+    test('wraps rather than exceeding 360', () async {
+      final controller = StreamController<Heading?>();
+      final service = HeadingService(
+        source: FakeHeadingSource(controller),
+        smoother: HeadingSmoother(factor: 1),
+      );
+      service.setPosition(latitude: 47.6062, longitude: -122.3321);
+
+      final results = <Heading?>[];
+      final subscription = service.headings().listen(results.add);
+      addTearDown(subscription.cancel);
+
+      // 355 plus a positive declination crosses north.
+      controller.add(heading(355));
+      await pumpEventQueue();
+
+      expect(results.single!.degrees, greaterThanOrEqualTo(0));
+      expect(results.single!.degrees, lessThan(360));
+      await controller.close();
+    });
+  });
+
   group('MapOrientation', () {
     test('toggles between the two modes', () {
       expect(MapOrientation.northUp.toggled, MapOrientation.headingUp);
