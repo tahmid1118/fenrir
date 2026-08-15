@@ -26,7 +26,20 @@
       "Bash(sed -i \"s|                      _SavedButton\\(onPressed: _openWaypoints\\),|                      if \\(_controller.hasCompass\\) ...[\\\\n                        CompassRose\\(\\\\n                          orientation: _controller.orientation,\\\\n                          heading: _controller.heading,\\\\n                          mapRotationDegrees: _controller.mapRotationDegrees,\\\\n                          onTap: _controller.toggleOrientation,\\\\n                        \\),\\\\n                        const SizedBox\\(width: 8\\),\\\\n                      ],\\\\n                      _SavedButton\\(onPressed: _openWaypoints\\),|\" lib/src/ui/home_screen.dart)",
       "Bash(sed -i \"s|^import 'fix_indicator.dart';|import 'compass_rose.dart';\\\\nimport 'fix_indicator.dart';|\" lib/src/ui/home_screen.dart)",
       "Bash(sed -i \"s|^import 'package:meta/meta.dart';|import 'package:meta/meta.dart';\\\\n\\\\nimport '../geo/geomagnetism.dart';|\" lib/src/location/heading_service.dart)",
-      "Bash(sed -i \"s|^    unawaited\\(_resolvePlace\\(current\\)\\);|    _heading.setPosition\\(\\\\n      latitude: current.latitude,\\\\n      longitude: current.longitude,\\\\n    \\);\\\\n    unawaited\\(_resolvePlace\\(current\\)\\);|\" lib/src/ui/home_controller.dart)"
+      "Bash(sed -i \"s|^    unawaited\\(_resolvePlace\\(current\\)\\);|    _heading.setPosition\\(\\\\n      latitude: current.latitude,\\\\n      longitude: current.longitude,\\\\n    \\);\\\\n    unawaited\\(_resolvePlace\\(current\\)\\);|\" lib/src/ui/home_controller.dart)",
+      "Bash(sed -i \"s|^import 'dart:typed_data';|import 'dart:math' as math;\\\\nimport 'dart:typed_data';|\" lib/src/map/mbtiles_archive.dart)",
+      "Bash(sed -i \"/^import 'dart:typed_data';$/d\" lib/src/map/layered_tile_provider.dart)",
+      "Bash(sed -i \"s|^import 'dart:convert';|import 'package:convert/convert.dart';|\" lib/src/packs/pack_downloader.dart)",
+      "Bash(sed -i \"s|  # Path joining for the bundled-asset extraction in lib/src/data.|  # Verifies a downloaded regional pack against its published digest \\(FR-5.1\\).\\\\n  # A corrupt pack would otherwise open as a valid archive and return no tiles,\\\\n  # which looks like a blank map rather than a failed download.\\\\n  crypto: ^3.0.6\\\\n  convert: ^3.1.2\\\\n\\\\n  # Path joining for the bundled-asset extraction in lib/src/data.|\" pubspec.yaml)",
+      "Bash(sed -i \"s|      if \\(bounds != null\\) 'bounds': bounds,|      ?'bounds': bounds,|\" test/map/layered_tile_provider_test.dart)",
+      "Bash(timeout 400 flutter test test/map/layered_tile_provider_test.dart)",
+      "Bash(sed -i \"s|      provider.setArchives\\(\\\\[await open\\(pack\\), await open\\(basemap\\)\\\\]\\);|      await provider.setArchives\\([await open\\(pack\\), await open\\(basemap\\)]\\);|\" test/map/layered_tile_provider_test.dart)",
+      "Bash(sed -i \"s|      ?'bounds': bounds,|      if \\(bounds != null\\) 'bounds': bounds,|\" test/map/layered_tile_provider_test.dart)",
+      "Bash(sed -i \"s|^    final meta = {|    // ignore: prefer_null_aware_operators\\\\n    final meta = <String, String>{|\" test/map/layered_tile_provider_test.dart)",
+      "Bash(sed -i \"s|    // ignore: prefer_null_aware_operators|    // ignore: use_null_aware_elements|\" test/map/layered_tile_provider_test.dart)",
+      "Bash(timeout 500 flutter test)",
+      "Bash(sed -i \"s|      if \\(bounds != null\\) 'bounds': bounds,|      'bounds': ?bounds,|\" test/map/layered_tile_provider_test.dart)",
+      "Bash(sed -i \"/^    \\\\/\\\\/ ignore: use_null_aware_elements$/d\" test/map/layered_tile_provider_test.dart)"
     ]
   }
 }

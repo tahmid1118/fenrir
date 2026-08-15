@@ -72,6 +72,12 @@ dependencies:
   # against the ^0.10.1 flutter_map needs.
   geobase: ^1.5.0
 
+  # Verifies a downloaded regional pack against its published digest (FR-5.1).
+  # A corrupt pack would otherwise open as a valid archive and return no tiles,
+  # which looks like a blank map rather than a failed download.
+  crypto: ^3.0.6
+  convert: ^3.1.2
+
   # Path joining for the bundled-asset extraction in lib/src/data.
   path: ^1.9.0
 
