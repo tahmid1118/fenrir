@@ -563,9 +563,17 @@ class _SavedButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // excludeSemantics stops TalkBack seeing this twice. IconButton's own
+    // `tooltip` contributes its own semantics node on Android, so without it
+    // a screen-reader swipe lands on "Saved places" from this Semantics and
+    // then on a second, separate "Saved places" stop from the tooltip --
+    // found by dumping the actual accessibility tree on a device, where a
+    // widget test checking this Semantics node in isolation would not have
+    // shown the duplicate.
     return Semantics(
       button: true,
       label: 'Saved places',
+      excludeSemantics: true,
       child: IconButton.filledTonal(
         onPressed: onPressed,
         icon: const Icon(Icons.bookmarks_outlined, size: 20),
@@ -582,9 +590,14 @@ class _SearchButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // See _SavedButton: without excludeSemantics this and the IconButton's
+    // tooltip each produce a focus stop, and here with *different* wording
+    // -- "Search places offline" from this label, "Search places" from the
+    // tooltip -- which is worse than a plain duplicate.
     return Semantics(
       button: true,
       label: 'Search places offline',
+      excludeSemantics: true,
       child: IconButton.filledTonal(
         onPressed: onPressed,
         icon: const Icon(Icons.search, size: 20),
@@ -601,9 +614,11 @@ class _RecentreButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // See _SavedButton.
     return Semantics(
       button: true,
       label: 'Centre the map on my position',
+      excludeSemantics: true,
       child: IconButton.filledTonal(
         onPressed: onPressed,
         icon: const Icon(Icons.my_location, size: 20),

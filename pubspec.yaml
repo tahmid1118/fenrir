@@ -90,6 +90,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # NFR-4's 60 fps figure has to come from a real profile-mode run on
+  # hardware, not a debug build eyeballed by a person. integration_test drives
+  # real gestures on a real device and its own binding.watchPerformance
+  # collects the engine's actual FrameTiming, summarised into build/raster
+  # times comparable against the 16.6 ms budget. See integration_test/perf_test.dart.
+  integration_test:
+    sdk: flutter
+
   # Rasterises Natural Earth geometry into basemap tiles in tools/. Build-time
   # only; never shipped in the app.
   image: ^4.9.1

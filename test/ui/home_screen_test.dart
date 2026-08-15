@@ -584,5 +584,66 @@ void main() {
       // means they can also be selected and copied by hand.
       expect(find.byType(SelectableText), findsWidgets);
     });
+
+    testWidgets(
+        'icon buttons are not announced twice by TalkBack',
+        (tester) async {
+      // Found by dumping the real accessibility tree on a device with
+      // TalkBack running, not by a widget test in isolation: an IconButton's
+      // own `tooltip` contributes its own semantics node on Android, so
+      // without excludeSemantics a screen-reader swipe hit "Saved places"
+      // from our Semantics label and then a second, separate "Saved places"
+      // stop from the tooltip -- and for search, two different strings,
+      // "Search places offline" and "Search places", which read as two
+      // unrelated controls rather than one duplicated one.
+      final handle = tester.ensureSemantics();
+
+      final source = FakeSource();
+      await pumpHome(tester, source);
+
+      expect(find.bySemanticsLabel('Saved places'), findsOneWidget);
+      expect(find.bySemanticsLabel('Search places offline'), findsOneWidget);
+      // The tooltip's own wording must not surface as a second, separately
+      // worded control.
+      expect(find.bySemanticsLabel('Search places'), findsNothing);
+
+      handle.dispose();
+    });
+
+    testWidgets(
+        "the position marker's label does not merge with the attribution text",
+        (tester) async {
+      // The bug this guards: "Your position" had no semantics boundary of
+      // its own, so on a real device it merged with whatever else sat in the
+      // map's Stack without an intervening container and was announced as
+      // "Your position, copyright Natural Earth, copyright GeoNames..." --
+      // even though "Attributions" also exists as its own separate button.
+      // Flutter's semantics merging is computed entirely in the framework
+      // rather than by the platform, so the same merge is reproducible here
+      // without a device.
+      final handle = tester.ensureSemantics();
+
+      final source = FakeSource();
+      await pumpHome(tester, source);
+
+      source.controller.add(PositionFix(
+        latitude: 23.7461,
+        longitude: 90.3742,
+        accuracyMeters: 6,
+        timestamp: DateTime.now(),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // An exact match is the regression guard: if the marker's label had
+      // merged with the attribution text, the real label would be "Your
+      // position\n© Natural Earth\n..." and would not equal this string, so
+      // this assertion fails on its own without needing to also search for
+      // fragments of the attribution text -- which exists correctly, and
+      // separately, elsewhere in the tree as its own accessible entry.
+      expect(find.bySemanticsLabel('Your position'), findsOneWidget);
+
+      handle.dispose();
+    });
   });
 }

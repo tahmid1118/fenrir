@@ -169,6 +169,13 @@ class _MapViewState extends State<MapView> {
           height: 26,
           child: Semantics(
             label: 'Searched place: ${target.label}',
+            // A boundary of its own. Without it this merged into whatever
+            // else sits in the map's Stack without an intervening semantics
+            // container -- found on a device as "Your position, copyright
+            // Natural Earth, copyright GeoNames..." read as one announcement,
+            // the marker's label concatenated onto the attribution control's
+            // text even though "Attributions" also exists as its own button.
+            container: true,
             child: Icon(
               Icons.place,
               size: 26,
@@ -217,6 +224,10 @@ class _MapViewState extends State<MapView> {
             height: 22,
             child: Semantics(
               label: 'Your position',
+              // See the searched-place marker above: without its own
+              // boundary this merges with unrelated semantics sharing the
+              // map's Stack.
+              container: true,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: colour,
