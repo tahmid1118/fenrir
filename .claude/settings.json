@@ -11,7 +11,20 @@
       "Bash(sed -i \"s|^import 'search_sheet.dart';|import 'search_sheet.dart';\\\\nimport 'waypoint_sheet.dart';|\" lib/src/ui/home_screen.dart)",
       "Bash(sed -i \"s|                      _SearchButton\\(onPressed: _openSearch\\),|                      _SavedButton\\(onPressed: _openWaypoints\\),\\\\n                      const SizedBox\\(width: 8\\),\\\\n                      _SearchButton\\(onPressed: _openSearch\\),|\" lib/src/ui/home_screen.dart)",
       "Bash(sed -i \"s|^import '../geo/plus_code.dart';|import '../share/position_message.dart';|\" lib/src/ui/position_panel.dart)",
-      "Bash(sed -i \"s|^import 'package:share_plus/share_plus.dart';|import 'package:share_plus/share_plus.dart';\\\\nimport 'package:url_launcher/url_launcher.dart';|\" lib/src/ui/position_panel.dart)"
+      "Bash(sed -i \"s|^import 'package:share_plus/share_plus.dart';|import 'package:share_plus/share_plus.dart';\\\\nimport 'package:url_launcher/url_launcher.dart';|\" lib/src/ui/position_panel.dart)",
+      "Bash(cp pubspec.yaml /tmp/pubspec.bak)",
+      "Bash(sed -i \"s|  url_launcher: \\\\^6.3.1|  url_launcher: ^6.3.1\\\\n\\\\n  # Magnetometer heading for FR-4.3.\\\\n  flutter_compass: ^0.8.1|\" pubspec.yaml)",
+      "Bash(flutter pub *)",
+      "Bash(sed -i \"s|^import 'dart:async';|import 'dart:async';\\\\nimport 'dart:math' as math;|\" test/location/heading_service_test.dart)",
+      "Bash(sed -i \"s|math_min\\(result, 360 - result\\)|math.min\\(result, 360 - result\\)|\" test/location/heading_service_test.dart)",
+      "Bash(sed -i \"/^double math_min\\(double a, double b\\) => a < b ? a : b;$/d\" test/location/heading_service_test.dart)",
+      "Bash(flutter analyze *)",
+      "Bash(sed -i \"s|^import '../location/location_service.dart';|import '../location/heading_service.dart';\\\\nimport '../location/location_service.dart';|\" lib/src/ui/home_controller.dart)",
+      "Bash(sed -i \"s|^    _states = _location.states.listen\\(_onLocationState\\);|    _headings = _heading.headings\\(\\).listen\\(_onHeading\\);\\\\n    _states = _location.states.listen\\(_onLocationState\\);|\" lib/src/ui/home_controller.dart)",
+      "Bash(sed -i \"s|^    unawaited\\(_states?.cancel\\(\\)\\);|    unawaited\\(_states?.cancel\\(\\)\\);\\\\n    unawaited\\(_headings?.cancel\\(\\)\\);|\" lib/src/ui/home_controller.dart)",
+      "Bash(sed -i \"s|              onUserPanned: \\(\\) => _controller.setFollowPosition\\(false\\),|              onUserPanned: \\(\\) => _controller.setFollowPosition\\(false\\),\\\\n              rotationDegrees: _controller.mapRotationDegrees,|\" lib/src/ui/home_screen.dart)",
+      "Bash(sed -i \"s|                      _SavedButton\\(onPressed: _openWaypoints\\),|                      if \\(_controller.hasCompass\\) ...[\\\\n                        CompassRose\\(\\\\n                          orientation: _controller.orientation,\\\\n                          heading: _controller.heading,\\\\n                          mapRotationDegrees: _controller.mapRotationDegrees,\\\\n                          onTap: _controller.toggleOrientation,\\\\n                        \\),\\\\n                        const SizedBox\\(width: 8\\),\\\\n                      ],\\\\n                      _SavedButton\\(onPressed: _openWaypoints\\),|\" lib/src/ui/home_screen.dart)",
+      "Bash(sed -i \"s|^import 'fix_indicator.dart';|import 'compass_rose.dart';\\\\nimport 'fix_indicator.dart';|\" lib/src/ui/home_screen.dart)"
     ]
   }
 }

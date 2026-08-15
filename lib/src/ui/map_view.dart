@@ -22,7 +22,15 @@ class MapView extends StatefulWidget {
     this.followPosition = true,
     this.onUserPanned,
     this.target,
+    this.rotationDegrees = 0,
   });
+
+  /// How far the map is turned from north-up, in degrees (FR-4.3).
+  ///
+  /// Applied as flutter_map's own rotation rather than by rotating a widget,
+  /// so tiles, markers and the accuracy circle all turn together and stay
+  /// registered with each other.
+  final double rotationDegrees;
 
   /// A place chosen from search, marked so the user can see where it is
   /// relative to them (FR-8.1).
@@ -68,8 +76,14 @@ class _MapViewState extends State<MapView> {
   @override
   void didUpdateWidget(MapView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!_ready) return;
+
+    if (widget.rotationDegrees != oldWidget.rotationDegrees) {
+      _controller.rotate(widget.rotationDegrees);
+    }
+
     final fix = widget.fix;
-    if (!_ready || fix == null || !widget.followPosition) return;
+    if (fix == null || !widget.followPosition) return;
 
     final moved = oldWidget.fix?.latitude != fix.latitude ||
         oldWidget.fix?.longitude != fix.longitude;
@@ -97,6 +111,7 @@ class _MapViewState extends State<MapView> {
         // world rather than an arbitrary place. NFR-6: a defined state, not a
         // blank one.
         initialZoom: fix == null ? 1.5 : MapView.defaultZoom,
+        initialRotation: widget.rotationDegrees,
         minZoom: 0,
         maxZoom: MapView.interactiveMaxZoom,
         backgroundColor: theme.colorScheme.surface,

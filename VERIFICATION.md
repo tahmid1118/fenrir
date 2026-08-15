@@ -22,6 +22,7 @@ Suite: **175 tests passing**, `flutter analyze` clean.
 | FR-3.2 | Report distance honestly | ✅ | *near* vs *in* asserted, including a Sundarbans position in the real coverage gap. |
 | FR-3.3 | Nothing over open water | ✅ | `30.0, -40.0` → null, plus four more ocean probes. |
 | FR-4.1 | Map with position, offline, first launch | ✅ | Confirmed by eye on a phone in airplane mode, on a first run with nothing cached: the bundled basemap rendered with the position marker on it. This is the product's differentiating claim and it now has a screenshot behind it. |
+| FR-4.3 | Follow-me, heading-up, compass rose | ✅ | Confirmed on device: the map rotates and the needle tracks screen north. **Heading is magnetic, and labelled `MAG`** — see the limitation below. |
 | FR-6.1 | Save the current position as a waypoint | ✅ | Local SQLite, separate from the bundled databases. Confirmed on device: saved, listed, undoable. |
 | FR-7.1 | Share position over SMS | ✅ | Composer opens prefilled, recipient chosen by the user. Needed a `<queries>` declaration or Android 11+ cannot see the SMS app at all. Verified on device. |
 | FR-8.1 | Offline place search | ✅ | 235,242 names via FTS5, with distance and bearing. On device: *Chattogram → 214 km SE*. |
@@ -197,6 +198,7 @@ as the screen being usable with the screen reader on.
 
 | Item | Why it matters |
 |---|---|
+| **Magnetic declination (FR-4.3)** | The compass reports **magnetic** north; the map is drawn to **true** north. The difference is under a degree in Dhaka and London, but reaches twenty degrees across parts of North America — so heading-up is visibly wrong there. It is labelled `MAG` rather than silently corrected, but the correct fix is the World Magnetic Model, which is a coefficient table and about 150 lines, fully offline. |
 | **Sustained 60 fps** | NFR-4's other half. Needs a profile-mode run with the performance overlay. |
 | **TalkBack pass** | NFR-7. |
 | **Release signing** | `signingConfig = signingConfigs.getByName("debug")` is still the stock TODO in `android/app/build.gradle.kts`. **Not shippable as-is.** |

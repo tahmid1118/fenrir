@@ -6,6 +6,7 @@ import '../data/bundled_asset.dart';
 import '../data/models.dart';
 import '../data/place_repository.dart';
 import '../data/waypoint_store.dart';
+import '../location/heading_service.dart';
 import '../location/location_service.dart';
 import '../location/position_fix.dart';
 import '../map/mbtiles_tile_provider.dart';
@@ -132,13 +133,44 @@ class HomeController extends ChangeNotifier {
   HomeController({
     LocationService? locationService,
     HomeDataSource? data,
+    HeadingService? headingService,
   })  : _location = locationService ?? LocationService(),
-        _data = data ?? BundledHomeDataSource();
+        _data = data ?? BundledHomeDataSource(),
+        _heading = headingService ?? HeadingService();
 
   final LocationService _location;
   final HomeDataSource _data;
+  final HeadingService _heading;
 
   StreamSubscription<LocationState>? _states;
+  StreamSubscription<Heading?>? _headings;
+
+  /// The latest compass reading, or null when there is no usable compass.
+  Heading? heading;
+
+  /// How the map is oriented (FR-4.3).
+  MapOrientation orientation = MapOrientation.northUp;
+
+  /// How far the map should be turned from north-up.
+  ///
+  /// Negative of the heading: to put the direction the device faces at the top
+  /// of the screen, the map underneath has to turn the opposite way.
+  double get mapRotationDegrees {
+    if (orientation != MapOrientation.headingUp) return 0;
+    final current = heading;
+    return current == null ? 0 : -current.degrees;
+  }
+
+  /// Whether heading-up is offered at all. A device with no magnetometer
+  /// should not be shown a control that cannot do anything.
+  bool get hasCompass => heading != null;
+
+  /// Switches between north-up and heading-up.
+  void toggleOrientation() {
+    if (!hasCompass) return;
+    orientation = orientation.toggled;
+    notifyListeners();
+  }
 
   AssetStatus assetStatus = AssetStatus.preparing;
   String? assetError;
@@ -168,6 +200,7 @@ class HomeController extends ChangeNotifier {
   /// against, and without the archive there is no map to draw it on.
   Future<void> start() async {
     await _prepareAssets();
+    _headings = _heading.headings().listen(_onHeading);
     _states = _location.states.listen(_onLocationState);
     await _location.start();
   }
@@ -182,6 +215,17 @@ class HomeController extends ChangeNotifier {
       // than looked up, so the app is degraded rather than useless.
       assetStatus = AssetStatus.failed;
       assetError = e is BundledAssetException ? e.message : '$e';
+    }
+    notifyListeners();
+  }
+
+  void _onHeading(Heading? next) {
+    heading = next;
+    // A compass that stops being reliable while heading-up is on must not
+    // freeze the map at whatever angle it happened to be. Falling back to
+    // north-up is predictable, and predictable beats stuck.
+    if (next == null && orientation == MapOrientation.headingUp) {
+      orientation = MapOrientation.northUp;
     }
     notifyListeners();
   }
@@ -284,6 +328,7 @@ class HomeController extends ChangeNotifier {
   @override
   void dispose() {
     unawaited(_states?.cancel());
+    unawaited(_headings?.cancel());
     unawaited(_location.dispose());
     unawaited(_data.dispose());
     super.dispose();

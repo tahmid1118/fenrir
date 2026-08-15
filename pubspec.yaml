@@ -47,6 +47,9 @@ dependencies:
   # calls it directly.
   url_launcher: ^6.3.1
 
+  # Magnetometer heading for FR-4.3.
+  flutter_compass: ^0.8.1
+
   # SQLite, bundled rather than borrowed from the platform.
   #
   # This replaced the `sqflite` plugin after a device run failed with

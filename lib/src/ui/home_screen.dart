@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../geo/coordinate_formats.dart';
 import '../location/position_fix.dart';
+import 'compass_rose.dart';
 import 'fix_indicator.dart';
 import 'home_controller.dart';
 import 'map_view.dart';
@@ -218,6 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
               quality: _controller.qualityAt(_now),
               followPosition: _controller.followPosition,
               onUserPanned: () => _controller.setFollowPosition(false),
+              rotationDegrees: _controller.mapRotationDegrees,
               target: _searchTarget == null
                   ? null
                   : (
@@ -243,6 +245,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const Spacer(),
+                      if (_controller.hasCompass) ...[
+                        CompassRose(
+                          orientation: _controller.orientation,
+                          heading: _controller.heading,
+                          mapRotationDegrees: _controller.mapRotationDegrees,
+                          onTap: _controller.toggleOrientation,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       _SavedButton(onPressed: _openWaypoints),
                       const SizedBox(width: 8),
                       _SearchButton(onPressed: _openSearch),
