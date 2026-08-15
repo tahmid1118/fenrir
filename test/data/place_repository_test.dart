@@ -103,6 +103,24 @@ void main() {
       expect(match.proximity, Proximity.near);
     });
 
+    test('a real neighbourhood the database does not cover reads as near',
+        () async {
+      // Rampura/Banasree, Dhaka. Neither is in the bundled database -- exactly
+      // the coverage gap FR-3.4 exists to eventually close -- so the nearest
+      // entry is Paltan, 3.458 km away. A user there was shown "Paltan, Dhaka,
+      // Dhaka Division, BD" with no qualifier, reading as if they were
+      // standing in it. That is the failure FR-3.2 exists to prevent, just at
+      // city scale rather than the rural scale the specification's own
+      // worked example worries about.
+      final match = await repository.nearestPlace(23.765824, 90.424765);
+      expect(match, isNotNull);
+      expect(match!.place.name, 'Paltan');
+      expect(match.distanceKm, closeTo(3.458, 0.01));
+      expect(match.proximity, Proximity.near,
+          reason: '3.5 km away is a different neighbourhood, not "in" '
+              'the matched place');
+    });
+
     test('proximity always agrees with the reported distance', () async {
       const positions = <(double, double)>[
         (23.7461, 90.3742),

@@ -49,8 +49,23 @@ class PlaceRepository {
   /// water yields nothing rather than a confidently wrong match.
   static const List<double> searchRadiiKm = [25.0, 100.0, 250.0];
 
-  /// Within this distance the user is described as being *in* the place.
-  static const double insideRadiusKm = 5.0;
+  /// Within this distance the user is described as being *in* the place,
+  /// rather than *near* it.
+  ///
+  /// Was 5.0 km. A real user in Rampura/Banasree, Dhaka — neither of which is
+  /// in the database, the exact coverage gap FR-3.4 exists to eventually fix —
+  /// was resolved to Paltan at 3.458 km and shown "Paltan, Dhaka, Dhaka
+  /// Division, BD" with no qualifier, reading as if they were standing in it.
+  /// That is precisely the confidently-wrong failure FR-3.2 exists to prevent;
+  /// it was just happening at city scale rather than the rural scale the
+  /// specification's own worked example worries about.
+  ///
+  /// 2.0 km keeps the specification's flagship fixture — Dhanmondi at 1.29 km
+  /// — solidly "inside", while the Paltan case above now correctly reads
+  /// "Near Paltan". It is a flat number rather than one scaled by a place's
+  /// population, which would size the radius to a big city's real footprint
+  /// more honestly; that is future work, not a difference this fix depends on.
+  static const double insideRadiusKm = 2.0;
 
   /// Kilometres per degree of latitude. Constant everywhere on a sphere.
   static const double _kmPerDegreeLat = 111.32;
